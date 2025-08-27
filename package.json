@@ -1,0 +1,26 @@
+{
+  "name": "sudoku-web-game",
+  "version": "1.0.0",
+  "description": "A Sudoku game web application with multiplayer support and Spotify integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "sudoku",
+    "game",
+    "multiplayer",
+    "spotify",
+    "web",
+    "javascript"
+  ],
+  "author": "Sudoku Game Developer",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}

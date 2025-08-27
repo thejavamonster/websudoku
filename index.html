@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku X Spotify</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <div id="notification-box" style="
+            width: 100%;
+            color: #fff;
+            padding: 16px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            min-height: 24px;
+            opacity: 0.95;
+            transition: opacity 0.3s;
+            text-align: center;
+        "></div>
+        <div id="player-identity" style="
+            width: 100%;
+            color: #ffd700;
+            padding: 16px;
+            font-size: 1rem;
+            font-weight: bold;
+            box-sizing: border-box;
+            text-align: center;
+        "></div>
+
+        <div class="main-frame" style="padding: 16px;">
+            <div class="sudoku-grid">
+                <!-- 3x3 subgrids -->
+                <div class="subgrid" data-subgrid="0,0">
+                    <input type="text" class="cell" data-row="0" data-col="0" maxlength="1">
+                    <input type="text" class="cell" data-row="0" data-col="1" maxlength="1">
+                    <input type="text" class="cell" data-row="0" data-col="2" maxlength="1">
+                    <input type="text" class="cell" data-row="1" data-col="0" maxlength="1">
+                    <input type="text" class="cell" data-row="1" data-col="1" maxlength="1">
+                    <input type="text" class="cell" data-row="1" data-col="2" maxlength="1">
+                    <input type="text" class="cell" data-row="2" data-col="0" maxlength="1">
+                    <input type="text" class="cell" data-row="2" data-col="1" maxlength="1">
+                    <input type="text" class="cell" data-row="2" data-col="2" maxlength="1">
+                </div>
+                <div class="subgrid" data-subgrid="0,1">
+                    <input type="text" class="cell" data-row="0" data-col="3" maxlength="1">
+                    <input type="text" class="cell" data-row="0" data-col="4" maxlength="1">
+                    <input type="text" class="cell" data-row="0" data-col="5" maxlength="1">
+                    <input type="text" class="cell" data-row="1" data-col="3" maxlength="1">
+                    <input type="text" class="cell" data-row="1" data-col="4" maxlength="1">
+                    <input type="text" class="cell" data-row="1" data-col="5" maxlength="1">
+                    <input type="text" class="cell" data-row="2" data-col="3" maxlength="1">
+                    <input type="text" class="cell" data-row="2" data-col="4" maxlength="1">
+                    <input type="text" class="cell" data-row="2" data-col="5" maxlength="1">
+                </div>
+                <div class="subgrid" data-subgrid="0,2">
+                    <input type="text" class="cell" data-row="0" data-col="6" maxlength="1">
+                    <input type="text" class="cell" data-row="0" data-col="7" maxlength="1">
+                    <input type="text" class="cell" data-row="0" data-col="8" maxlength="1">
+                    <input type="text" class="cell" data-row="1" data-col="6" maxlength="1">
+                    <input type="text" class="cell" data-row="1" data-col="7" maxlength="1">
+                    <input type="text" class="cell" data-row="1" data-col="8" maxlength="1">
+                    <input type="text" class="cell" data-row="2" data-col="6" maxlength="1">
+                    <input type="text" class="cell" data-row="2" data-col="7" maxlength="1">
+                    <input type="text" class="cell" data-row="2" data-col="8" maxlength="1">
+                </div>
+                <div class="subgrid" data-subgrid="1,0">
+                    <input type="text" class="cell" data-row="3" data-col="0" maxlength="1">
+                    <input type="text" class="cell" data-row="3" data-col="1" maxlength="1">
+                    <input type="text" class="cell" data-row="3" data-col="2" maxlength="1">
+                    <input type="text" class="cell" data-row="4" data-col="0" maxlength="1">
+                    <input type="text" class="cell" data-row="4" data-col="1" maxlength="1">
+                    <input type="text" class="cell" data-row="4" data-col="2" maxlength="1">
+                    <input type="text" class="cell" data-row="5" data-col="0" maxlength="1">
+                    <input type="text" class="cell" data-row="5" data-col="1" maxlength="1">
+                    <input type="text" class="cell" data-row="5" data-col="2" maxlength="1">
+                </div>
+                <div class="subgrid" data-subgrid="1,1">
+                    <input type="text" class="cell" data-row="3" data-col="3" maxlength="1">
+                    <input type="text" class="cell" data-row="3" data-col="4" maxlength="1">
+                    <input type="text" class="cell" data-row="3" data-col="5" maxlength="1">
+                    <input type="text" class="cell" data-row="4" data-col="3" maxlength="1">
+                    <input type="text" class="cell" data-row="4" data-col="4" maxlength="1">
+                    <input type="text" class="cell" data-row="4" data-col="5" maxlength="1">
+                    <input type="text" class="cell" data-row="5" data-col="3" maxlength="1">
+                    <input type="text" class="cell" data-row="5" data-col="4" maxlength="1">
+                    <input type="text" class="cell" data-row="5" data-col="5" maxlength="1">
+                </div>
+                <div class="subgrid" data-subgrid="1,2">
+                    <input type="text" class="cell" data-row="3" data-col="6" maxlength="1">
+                    <input type="text" class="cell" data-row="3" data-col="7" maxlength="1">
+                    <input type="text" class="cell" data-row="3" data-col="8" maxlength="1">
+                    <input type="text" class="cell" data-row="4" data-col="6" maxlength="1">
+                    <input type="text" class="cell" data-row="4" data-col="7" maxlength="1">
+                    <input type="text" class="cell" data-row="4" data-col="8" maxlength="1">
+                    <input type="text" class="cell" data-row="5" data-col="6" maxlength="1">
+                    <input type="text" class="cell" data-row="5" data-col="7" maxlength="1">
+                    <input type="text" class="cell" data-row="5" data-col="8" maxlength="1">
+                </div>
+                <div class="subgrid" data-subgrid="2,0">
+                    <input type="text" class="cell" data-row="6" data-col="0" maxlength="1">
+                    <input type="text" class="cell" data-row="6" data-col="1" maxlength="1">
+                    <input type="text" class="cell" data-row="6" data-col="2" maxlength="1">
+                    <input type="text" class="cell" data-row="7" data-col="0" maxlength="1">
+                    <input type="text" class="cell" data-row="7" data-col="1" maxlength="1">
+                    <input type="text" class="cell" data-row="7" data-col="2" maxlength="1">
+                    <input type="text" class="cell" data-row="8" data-col="0" maxlength="1">
+                    <input type="text" class="cell" data-row="8" data-col="1" maxlength="1">
+                    <input type="text" class="cell" data-row="8" data-col="2" maxlength="1">
+                </div>
+                <div class="subgrid" data-subgrid="2,1">
+                    <input type="text" class="cell" data-row="6" data-col="3" maxlength="1">
+                    <input type="text" class="cell" data-row="6" data-col="4" maxlength="1">
+                    <input type="text" class="cell" data-row="6" data-col="5" maxlength="1">
+                    <input type="text" class="cell" data-row="7" data-col="3" maxlength="1">
+                    <input type="text" class="cell" data-row="7" data-col="4" maxlength="1">
+                    <input type="text" class="cell" data-row="7" data-col="5" maxlength="1">
+                    <input type="text" class="cell" data-row="8" data-col="3" maxlength="1">
+                    <input type="text" class="cell" data-row="8" data-col="4" maxlength="1">
+                    <input type="text" class="cell" data-row="8" data-col="5" maxlength="1">
+                </div>
+                <div class="subgrid" data-subgrid="2,2">
+                    <input type="text" class="cell" data-row="6" data-col="6" maxlength="1">
+                    <input type="text" class="cell" data-row="6" data-col="7" maxlength="1">
+                    <input type="text" class="cell" data-row="6" data-col="8" maxlength="1">
+                    <input type="text" class="cell" data-row="7" data-col="6" maxlength="1">
+                    <input type="text" class="cell" data-row="7" data-col="7" maxlength="1">
+                    <input type="text" class="cell" data-row="7" data-col="8" maxlength="1">
+                    <input type="text" class="cell" data-row="8" data-col="6" maxlength="1">
+                    <input type="text" class="cell" data-row="8" data-col="7" maxlength="1">
+                    <input type="text" class="cell" data-row="8" data-col="8" maxlength="1">
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-frame">
+            <div class="mode-frame">
+                <label class="control-label">Mode:</label>
+                <select id="mode-select" class="control-select">
+                    <option value="single">Single Player</option>
+                    <option value="multiplayer">Multiplayer</option>
+                </select>
+            </div>
+            
+            <div class="diff-frame">
+                <label class="control-label">Difficulty:</label>
+                <select id="difficulty-select" class="control-select">
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                    <option value="Stupidly Hard">Stupidly Hard</option>
+                    <option value="Impossibly Hard">Impossibly Hard</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="timer-label" id="timer">Time: 00:00</div>
+        <div class="mistake-label" id="mistakes">Mistakes: 0/3</div>
+        <div class="player-label" id="player-turn"></div>
+
+        <div class="spotify-frame">
+            <button id="spotify-btn" class="spotify-button">Connect Spotify</button>
+            <div class="song-label" id="song-info">No song playing</div>
+        </div>
+
+        <canvas id="wave-canvas" class="wave-canvas" width="400" height="80"></canvas>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
