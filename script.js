@@ -526,7 +526,7 @@ class SudokuGame {
 
     endMultiplayerGame() {
         this.setBoardEnabled(false);
-
+        this.timerRunning = false;
         let msg;
         if (this.player1Mistakes < this.player2Mistakes) {
             msg = "Game over! Player 1 wins!";
