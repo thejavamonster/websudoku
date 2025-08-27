@@ -107,7 +107,8 @@ class SudokuGame {
     }
 
     initWebSocket() {
-        this.ws = new WebSocket(`ws://${location.host}`);
+        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+        this.ws = new WebSocket(`${protocol}://${location.host}`);
         this.ws.onopen = () => {
             // Send selected difficulty to server
             const diffSelect = document.getElementById('difficulty-select');

@@ -5,7 +5,7 @@ const https = require('https');
 const querystring = require('querystring');
 const WebSocket = require('ws');
 
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 const SPOTIFY_CLIENT_ID = "";
 const SPOTIFY_CLIENT_SECRET = "";
