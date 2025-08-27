@@ -15,6 +15,10 @@ class SudokuGame {
         this.player2Mistakes = 0;
         this.playerNum = null;
 
+        this.player1Time = 0;
+        this.player2Time = 0;
+        this._lastTimerUpdate = Date.now();
+
         this.ws = null;
 
         this.spotifyConnected = false;
@@ -99,8 +103,10 @@ class SudokuGame {
             if (this.isMultiplayer && this.playerNum) {
                 label.textContent = `You are Player ${this.playerNum}`;
                 label.style.color = this.playerNum === 1 ? '#2196f3' : '#43a047'; // blue for 1, green for 2
+                //label.style.color = '#fff';
             } else {
                 label.textContent = '';
+                label.style.background = '';
                 label.style.color = '';
             }
         }
@@ -117,7 +123,6 @@ class SudokuGame {
                 type: 'join',
                 difficulty: difficulty
             }));
-
         };
         this.ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
@@ -128,6 +133,10 @@ class SudokuGame {
                 this.player2Mistakes = data.mistakes[1];
                 this.currentPlayer = data.currentPlayer;
                 this.playerNum = data.playerNum;
+                this.player1Time = 0;
+                this.player2Time = 0;
+                this._lastTimerUpdate = Date.now();
+                this.timerRunning = true; // Start timer now
                 this.updateDisplay();
                 this.updateMultiplayerDisplay();
                 this.setPlayerIdentity();
@@ -150,6 +159,7 @@ class SudokuGame {
                     cell.disabled = true;
                 }
                 this.currentPlayer = data.currentPlayer;
+                this._lastTimerUpdate = Date.now();
                 this.updateMultiplayerDisplay();
 
                 // Show notifications for both players
@@ -163,13 +173,13 @@ class SudokuGame {
                 this.player1Mistakes = data.mistakes[0];
                 this.player2Mistakes = data.mistakes[1];
                 this.currentPlayer = data.currentPlayer;
+                this._lastTimerUpdate = Date.now();
                 this.updateMultiplayerDisplay();
                 if (data.cell) {
                     const cell = document.querySelector(`.cell[data-row="${data.cell.row}"][data-col="${data.cell.col}"]`);
                     if (cell) {
                         cell.classList.add('wrong');
                         cell.value = data.wrongValue || '';
-                        // REMOVE: cell.disabled = false;
                     }
                     if (this.playerNum === data.player) {
                         this.showNotification(`You made a mistake at (${data.cell.row + 1}, ${data.cell.col + 1}). You can change the number on your next turn.`);
@@ -179,12 +189,7 @@ class SudokuGame {
                 }
             }
             if (data.type === 'gameover') {
-                if (this.playerNum === data.loser) {
-                    this.showNotification("Game over! You lost by making 3 mistakes.");
-                } else {
-                    this.showNotification(`Game over! Player ${data.loser} lost by making 3 mistakes. You win!`);
-                }
-                this.setBoardEnabled(false);
+                this.endMultiplayerGame();
             }
         };
     }
@@ -210,7 +215,7 @@ class SudokuGame {
 
     onCellClick(event) {
         const cell = event.target;
-        if (cell.disabled) return; // Prevent interaction if disabled
+        if (cell.disabled) return;
         if (cell.classList.contains('wrong')) {
             cell.value = '';
             cell.classList.remove('wrong');
@@ -220,7 +225,7 @@ class SudokuGame {
 
     onKeyDown(event) {
         const cell = event.target;
-        if (cell.disabled) return; // Prevent interaction if disabled
+        if (cell.disabled) return;
         if (event.key === 'Backspace' && cell.classList.contains('wrong')) {
             cell.value = '';
             cell.classList.remove('wrong');
@@ -339,6 +344,9 @@ class SudokuGame {
         this.currentPlayer = 1;
         this.startTime = Date.now();
         this.timerRunning = true;
+        this.player1Time = 0;
+        this.player2Time = 0;
+        this._lastTimerUpdate = Date.now();
         this.grid = Array(9).fill().map(() => Array(9).fill(0));
         this.fillGrid();
         this.solution = this.grid.map(row => [...row]);
@@ -413,7 +421,6 @@ class SudokuGame {
     setBoardEnabled(enabled) {
         const cells = document.querySelectorAll('.cell');
         cells.forEach(cell => {
-            // Only enable if it's your turn and the cell is not prefilled
             cell.disabled = !enabled || cell.classList.contains('prefilled');
         });
     }
@@ -429,14 +436,18 @@ class SudokuGame {
         this.isMultiplayer = (mode === "multiplayer");
         const diffSelect = document.getElementById('difficulty-select');
         if (diffSelect) {
-            diffSelect.disabled = this.isMultiplayer; // Disable if multiplayer
+            diffSelect.disabled = this.isMultiplayer;
         }
+        // Reset timers and pause timer
+        this.player1Time = 0;
+        this.player2Time = 0;
+        this.timerRunning = false; // <--- PAUSE TIMER
+        this._lastTimerUpdate = Date.now();
         if (this.isMultiplayer) {
             this.initWebSocket();
         }
         this.newGame();
     }
-
     changeDifficulty(difficulty) {
         this.difficulty = difficulty;
         this.newGame();
@@ -448,14 +459,35 @@ class SudokuGame {
 
     updateTimer() {
         const timerLabel = document.getElementById('timer');
+        const now = Date.now();
         if (this.timerRunning && timerLabel) {
-            const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = elapsed % 60;
-            timerLabel.textContent =
-                `Time: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            if (this.isMultiplayer) {
+                const delta = Math.floor((now - this._lastTimerUpdate) / 1000);
+                if (delta > 0) {
+                    if (this.currentPlayer === 1) {
+                        this.player1Time += delta;
+                    } else {
+                        this.player2Time += delta;
+                    }
+                    this._lastTimerUpdate = now;
+                }
+                timerLabel.textContent =
+                    `Player 1: ${this.formatTime(this.player1Time)} | Player 2: ${this.formatTime(this.player2Time)}`;
+            } else {
+                const elapsed = Math.floor((now - this.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                timerLabel.textContent =
+                    `Time: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
         }
         setTimeout(() => this.updateTimer(), 1000);
+    }
+
+    formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
     checkSolution() {
@@ -483,9 +515,33 @@ class SudokuGame {
         const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
         const minutes = Math.floor(elapsed / 60);
         const seconds = elapsed % 60;
-        this.showNotification(`Congratulations! Puzzle solved in ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}!`);
-        this.newGame();
+        if (this.isMultiplayer) {
+            this.endMultiplayerGame();
+        } else {
+            this.showNotification(`Congratulations! Puzzle solved in ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}!`);
+            this.newGame();
+        }
         return true;
+    }
+
+    endMultiplayerGame() {
+        this.setBoardEnabled(false);
+
+        let msg;
+        if (this.player1Mistakes < this.player2Mistakes) {
+            msg = "Game over! Player 1 wins!";
+        } else if (this.player2Mistakes < this.player1Mistakes) {
+            msg = "Game over! Player 2 wins!";
+        } else {
+            if (this.player1Time < this.player2Time) {
+                msg = `Game over! Both players made the same number of mistakes, but Player 1 wins by time (${this.formatTime(this.player1Time)} vs ${this.formatTime(this.player2Time)})!`;
+            } else if (this.player2Time < this.player1Time) {
+                msg = `Game over! Both players made the same number of mistakes, but Player 2 wins by time (${this.formatTime(this.player2Time)} vs ${this.formatTime(this.player1Time)})!`;
+            } else {
+                msg = "Game over! It's a draw!";
+            }
+        }
+        this.showNotification(msg);
     }
 
     connectSpotify() {
