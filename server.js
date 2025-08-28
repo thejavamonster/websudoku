@@ -272,7 +272,7 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    if (pathname === '/' && url.searchParams.has('code')) {
+    if (pathname === '/callback' && url.searchParams.has('code')) {
         const code = url.searchParams.get('code');
         const state = url.searchParams.get('state');
         
