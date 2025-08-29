@@ -210,7 +210,12 @@ body {
     background-color: var(--bg-color);
 }
 
-.spotify-button {
+.soundwave-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.soundwave-button {
     background-color: var(--spotify-green);
     color: white;
     border: none;
@@ -218,22 +223,82 @@ body {
     font-size: 12px;
     font-weight: bold;
     font-family: Arial, sans-serif;
-    border-radius: 4px;
+    border-radius: 20px;
     cursor: pointer;
     margin-bottom: 5px;
-    transition: background-color 0.3s ease;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
-.spotify-button:hover {
-    background-color: #1ed760;
+.soundwave-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.spotify-button.connected {
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: var(--bg-color);
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 8px;
+    border: 1px solid var(--text-color);
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.dropdown-content a {
+    color: var(--text-color);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    font-size: 12px;
+    transition: background-color 0.3s;
+}
+
+.dropdown-content a:hover {
+    background-color: var(--grid-bg);
+}
+
+.dropdown-content a:first-child {
+    border-radius: 8px 8px 0 0;
+}
+
+.dropdown-content a:last-child {
+    border-radius: 0 0 8px 8px;
+}
+
+.soundwave-dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.soundwave-button.connected {
     background-color: var(--spotify-green);
+    box-shadow: 0 0 10px rgba(29, 185, 84, 0.3);
 }
 
-.spotify-button.demo {
-    background-color: var(--spotify-orange);
+.soundwave-button.connecting {
+    background-color: #ff9500;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.soundwave-button.soundwaves {
+    background-color: var(--wave-color);
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 149, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 149, 0, 0);
+    }
 }
 
 .song-label {
@@ -242,14 +307,32 @@ body {
     background-color: var(--bg-color);
     text-align: center;
     min-height: 20px;
+    padding: 5px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.song-label.playing {
+    color: var(--spotify-green);
+    font-weight: bold;
 }
 
 /* Wave canvas */
 .wave-canvas {
     background-color: var(--canvas-bg);
     border: 1px solid #555555;
-    border-radius: 4px;
+    border-radius: 8px;
     margin-top: 10px;
+    transition: all 0.3s ease;
+}
+
+.wave-canvas.active {
+    border-color: var(--spotify-green);
+    box-shadow: 0 0 10px rgba(29, 185, 84, 0.2);
 }
 
 /* Responsive design */
