@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 8080;
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
-const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
+const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || `http://localhost:${PORT}`;
 
 const sessions = new Map();
 
@@ -456,7 +456,7 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    if (pathname === '/' && url.searchParams.has('code')) {
+    if ((pathname === '/' || pathname === '/callback') && url.searchParams.has('code')) {
         const code = url.searchParams.get('code');
         const sessionId = url.searchParams.get('state');
         
