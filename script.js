@@ -28,6 +28,9 @@ class SudokuGame {
         this.trackTempo = 120;
         this.trackEnergy = 0.5;
         this.songStartTime = 0;
+        this.spotifyCheckInterval = null;
+        this.connectionAttempts = 0;
+        this.maxConnectionAttempts = 3;
 
         this.soundWaves = Array(50).fill().map(() => Math.random() * 0.5 + 0.3);
         this.waveAnimationRunning = true;
@@ -51,9 +54,13 @@ class SudokuGame {
         this.updateTimer();
         this.animateWaves();
         this.checkThemeChange();
+        this.checkSpotifyStatus();
         if (this.isMultiplayer) {
             this.initWebSocket();
         }
+        
+        // Initialize song display
+        this.updateSongDisplay();
     }
 
     setupEventListeners() {
@@ -77,12 +84,7 @@ class SudokuGame {
             });
         }
 
-        const spotifyBtn = document.getElementById('spotify-btn');
-        if (spotifyBtn) {
-            spotifyBtn.addEventListener('click', () => {
-                this.connectSpotify();
-            });
-        }
+        this.setupDropdownListeners();
     }
 
     showNotification(message) {
@@ -541,77 +543,264 @@ class SudokuGame {
                 msg = "Game over! It's a draw!";
             }
         }
-        this.showNotification(msg);
+        this.showNotification(msg + " New game starting in 10 seconds...");
+        
+        setTimeout(() => {
+            this.newGame();
+            this.setBoardEnabled(true);
+            this.timerRunning = true;
+            this.showNotification("New game started!");
+        }, 10000);
     }
 
-    connectSpotify() {
-        const authWindow = window.open('/spotify-auth', 'spotify-auth',
-            'width=500,height=600,scrollbars=yes,resizable=yes');
-        window.addEventListener('message', (event) => {
-            if (event.data === 'spotify-connected') {
+    async checkSpotifyStatus() {
+        try {
+            const response = await fetch('/spotify-status');
+            const data = await response.json();
+            
+            if (data.connected) {
                 this.spotifyConnected = true;
-                const spotifyBtn = document.getElementById('spotify-btn');
-                if (spotifyBtn) {
-                    spotifyBtn.textContent = "Connected!";
-                    spotifyBtn.classList.remove('demo');
-                    spotifyBtn.classList.add('connected');
-                }
-                this.getCurrentSong();
+                this.updateSoundwaveButton('connected');
+                this.startSpotifyPolling();
+            } else {
+                this.spotifyConnected = false;
+                this.updateSoundwaveButton('disconnected');
             }
-        });
-        if (!authWindow) {
-            this.showNotification('Please allow popups for this site to connect to Spotify');
+        } catch (error) {
+            console.error('Failed to check Spotify status:', error);
         }
     }
 
-    getCurrentSong() {
-        if (!this.spotifyConnected) return;
-        fetch('/spotify-current-song')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Spotify API error');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data && data.item) {
-                    const track = data.item;
-                    const artist = track.artists[0].name;
-                    const song = track.name;
-                    const trackId = track.id;
-                    this.isMusicPlaying = data.is_playing;
-                    if (trackId !== this.currentTrackId) {
-                        this.currentTrackId = trackId;
-                        this.trackTempo = 120;
-                        this.trackEnergy = 0.6;
-                    }
-                    if (this.isMusicPlaying) {
-                        const progressMs = data.progress_ms || 0;
-                        this.songStartTime = Date.now() - progressMs;
-                        this.currentSong = `♪ ${artist} - ${song}`;
-                    } else {
-                        this.currentSong = `⏸ ${artist} - ${song} (Paused)`;
-                    }
-                } else {
-                    this.currentSong = "No song playing";
-                    this.isMusicPlaying = false;
-                }
-                const songInfo = document.getElementById('song-info');
-                if (songInfo) {
-                    songInfo.textContent = this.currentSong;
-                }
-            })
-            .catch(error => {
-                console.error('Spotify API error:', error);
-                this.currentSong = "Spotify connection lost";
-                this.isMusicPlaying = false;
-                const songInfo = document.getElementById('song-info');
-                if (songInfo) {
-                    songInfo.textContent = this.currentSong;
-                }
+    updateSoundwaveButton(state) {
+        const soundwaveBtn = document.getElementById('soundwave-btn');
+        if (!soundwaveBtn) return;
+        
+        switch (state) {
+            case 'connected':
+                soundwaveBtn.textContent = "Spotify Connected";
+                soundwaveBtn.classList.remove('soundwaves', 'connecting');
+                soundwaveBtn.classList.add('connected');
+                break;
+            case 'connecting':
+                soundwaveBtn.textContent = "Connecting...";
+                soundwaveBtn.classList.remove('soundwaves', 'connected');
+                soundwaveBtn.classList.add('connecting');
+                break;
+            case 'soundwaves':
+                soundwaveBtn.textContent = "Playing Soundwaves";
+                soundwaveBtn.classList.remove('connected', 'connecting');
+                soundwaveBtn.classList.add('soundwaves');
+                break;
+            default:
+                soundwaveBtn.textContent = "Soundwave Options";
+                soundwaveBtn.classList.remove('connected', 'connecting', 'soundwaves');
+                break;
+        }
+    }
+
+    setupDropdownListeners() {
+        const connectSpotifyBtn = document.getElementById('connect-spotify');
+        const playSoundwavesBtn = document.getElementById('play-soundwaves');
+        
+        if (connectSpotifyBtn) {
+            connectSpotifyBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.connectSpotify();
             });
+        }
+        
+        if (playSoundwavesBtn) {
+            playSoundwavesBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.playSoundwaves();
+            });
+        }
+    }
+
+    playSoundwaves() {
+        this.spotifyConnected = false;
+        this.isMusicPlaying = true;
+        this.currentSong = "Playing soundwaves";
+        this.updateSoundwaveButton('soundwaves');
+        this.updateSongDisplay();
+        this.showNotification('Playing soundwaves!');
+    }
+
+    startSpotifyPolling() {
+        if (this.spotifyCheckInterval) {
+            clearInterval(this.spotifyCheckInterval);
+        }
+        this.getCurrentSong();
+        this.spotifyCheckInterval = setInterval(() => {
+            this.getCurrentSong();
+        }, 3000);
+    }
+
+    stopSpotifyPolling() {
+        if (this.spotifyCheckInterval) {
+            clearInterval(this.spotifyCheckInterval);
+            this.spotifyCheckInterval = null;
+        }
+    }
+
+    connectSpotify() {
         if (this.spotifyConnected) {
-            setTimeout(() => this.getCurrentSong(), 2000);
+            this.showNotification('Spotify is already connected and working!');
+            return;
+        }
+
+        this.updateSoundwaveButton('connecting');
+        
+        // Try direct connection first (proxy mode)
+        this.getCurrentSong().then(() => {
+            if (this.currentSong && this.currentSong !== 'No song playing' && this.currentSong !== 'Connection error') {
+                this.spotifyConnected = true;
+                this.updateSoundwaveButton('connected');
+                this.startSpotifyPolling();
+                this.showNotification('Connected via proxy!');
+                return;
+            }
+            
+            // Fallback to OAuth if proxy fails
+            this.connectionAttempts++;
+            const authWindow = window.open('/spotify-auth', 'spotify-auth',
+                'width=500,height=600,scrollbars=yes,resizable=yes');
+            
+            const messageHandler = (event) => {
+                if (event.data && event.data.type === 'spotify-connected') {
+                    window.removeEventListener('message', messageHandler);
+                    if (event.data.success) {
+                        this.spotifyConnected = true;
+                        this.connectionAttempts = 0;
+                        this.updateSoundwaveButton('connected');
+                        this.startSpotifyPolling();
+                        this.showNotification('Spotify connected successfully!');
+                    } else {
+                        this.updateSoundwaveButton('disconnected');
+                        this.showNotification('Failed to connect to Spotify');
+                    }
+                }
+            };
+            
+            window.addEventListener('message', messageHandler);
+            
+            if (!authWindow) {
+                this.updateSoundwaveButton('disconnected');
+                this.showNotification('Please allow popups for this site to connect to Spotify');
+                return;
+            }
+            
+            const checkClosed = setInterval(() => {
+                if (authWindow.closed) {
+                    clearInterval(checkClosed);
+                    window.removeEventListener('message', messageHandler);
+                    if (!this.spotifyConnected) {
+                        this.updateSoundwaveButton('disconnected');
+                    }
+                }
+            }, 1000);
+        });
+    }
+
+    async getCurrentSong() {
+        if (!this.spotifyConnected) return;
+        
+        try {
+            const response = await fetch('/spotify-current-song');
+            const data = await response.json();
+            
+            if (data.needsReauth) {
+                this.handleSpotifyDisconnection();
+                return;
+            }
+            
+            if (data && data.item) {
+                const track = data.item;
+                const artist = track.artists[0].name;
+                const song = track.name;
+                const trackId = track.id;
+                this.isMusicPlaying = data.is_playing;
+                
+                if (trackId !== this.currentTrackId) {
+                    this.currentTrackId = trackId;
+                    this.trackTempo = Math.random() * 60 + 90; // 90-150 BPM
+                    this.trackEnergy = Math.random() * 0.4 + 0.4; // 0.4-0.8
+                }
+                
+                if (data.isFreeAccount) {
+                    this.currentSong = `${artist} - ${song} (Recently played)`;
+                    this.isMusicPlaying = false; // Show as not currently playing
+                } else if (this.isMusicPlaying) {
+                    const progressMs = data.progress_ms || 0;
+                    this.songStartTime = Date.now() - progressMs;
+                    this.currentSong = `${artist} - ${song}`;
+                } else {
+                    this.currentSong = `${artist} - ${song} (Paused)`;
+                }
+            } else if (data && data.isConnected && data.userProfile) {
+                this.currentSong = `Connected as ${data.userProfile.display_name || data.userProfile.id}`;
+                this.isMusicPlaying = false;
+            } else if (data && data.needsUserAccess) {
+                this.currentSong = "Sorry You are Not Added. We will display the soundwaves for you though.";
+                this.isMusicPlaying = true;
+            } else if (data && data.requiresPremium) {
+                this.currentSong = "Spotify Premium required";
+                this.isMusicPlaying = false;
+            } else if (data && data.message) {
+                this.currentSong = data.message;
+                this.isMusicPlaying = false;
+            } else {
+                this.currentSong = "No song playing";
+                this.isMusicPlaying = false;
+            }
+            
+            this.updateSongDisplay();
+            
+        } catch (error) {
+            console.error('Spotify API error:', error);
+            const response = await fetch('/spotify-current-song').catch(() => null);
+            if (response && response.status === 401) {
+                this.handleSpotifyDisconnection();
+            } else {
+                this.currentSong = "Connection error";
+                this.isMusicPlaying = false;
+                this.updateSongDisplay();
+            }
+        }
+    }
+    
+    updateSongDisplay() {
+        const songInfo = document.getElementById('song-info');
+        const canvas = document.getElementById('wave-canvas');
+        
+        if (songInfo) {
+            songInfo.textContent = this.currentSong;
+            if (this.isMusicPlaying) {
+                songInfo.classList.add('playing');
+            } else {
+                songInfo.classList.remove('playing');
+            }
+        }
+        
+        if (canvas) {
+            if (this.isMusicPlaying) {
+                canvas.classList.add('active');
+            } else {
+                canvas.classList.remove('active');
+            }
+        }
+    }
+    
+    handleSpotifyDisconnection() {
+        this.spotifyConnected = false;
+        this.currentSong = "Discord disconnected";
+        this.isMusicPlaying = false;
+        this.stopSpotifyPolling();
+        this.updateSoundwaveButton('disconnected');
+        this.updateSongDisplay();
+        
+        if (this.connectionAttempts < this.maxConnectionAttempts) {
+            this.showNotification('Discord connection lost. Click to reconnect.');
         }
     }
 
@@ -625,11 +814,31 @@ class SudokuGame {
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
         const waveColor = getComputedStyle(document.documentElement).getPropertyValue('--wave-color');
         const barWidth = canvasWidth / this.soundWaves.length;
+        
         for (let i = 0; i < this.soundWaves.length; i++) {
             const x = i * barWidth;
-            const waveHeight = Math.max(8, this.soundWaves[i] * (canvasHeight - 5));
+            const waveHeight = Math.max(6, this.soundWaves[i] * (canvasHeight - 8));
             const centerY = canvasHeight / 2;
-            ctx.fillStyle = waveColor;
+            
+            // Create gradient effect for active music
+            if (this.isMusicPlaying) {
+                if (this.spotifyConnected) {
+                    const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
+                    gradient.addColorStop(0, '#1db954');
+                    gradient.addColorStop(1, waveColor);
+                    ctx.fillStyle = gradient;
+                } else {
+                    // Soundwave mode - cyan/blue gradient like the image
+                    const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
+                    gradient.addColorStop(0, '#00ffff');
+                    gradient.addColorStop(0.5, '#0080ff');
+                    gradient.addColorStop(1, '#004080');
+                    ctx.fillStyle = gradient;
+                }
+            } else {
+                ctx.fillStyle = waveColor;
+            }
+            
             ctx.fillRect(
                 x + 1.5,
                 centerY - waveHeight / 2,
@@ -637,14 +846,16 @@ class SudokuGame {
                 waveHeight
             );
         }
+        
         if (this.isMusicPlaying) {
-            const beatIntensity = 0.6 + 0.3 * Math.sin(Date.now() * 0.001 * (this.trackTempo / 60.0) * 2 * Math.PI);
-            this.soundWaves.push(Math.random() * 0.5 + beatIntensity);
+            const beatIntensity = 0.5 + 0.4 * Math.sin(Date.now() * 0.001 * (this.trackTempo / 60.0) * 2 * Math.PI);
+            const energyBoost = this.trackEnergy * 0.3;
+            this.soundWaves.push(Math.random() * 0.4 + beatIntensity + energyBoost);
         } else {
-            this.soundWaves.push(Math.random() * 0.1 + 0.05);
+            this.soundWaves.push(Math.random() * 0.15 + 0.1);
         }
         this.soundWaves.shift();
-        setTimeout(() => this.animateWaves(), 120);
+        setTimeout(() => this.animateWaves(), this.isMusicPlaying ? 80 : 150);
     }
 
     checkThemeChange() {
