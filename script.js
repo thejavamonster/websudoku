@@ -103,9 +103,11 @@ class SudokuGame {
         const label = document.getElementById('player-identity');
         if (label) {
             if (this.isMultiplayer && this.playerNum) {
-                label.textContent = `You are Player ${this.playerNum}`;
-                label.style.color = this.playerNum === 1 ? '#2196f3' : '#43a047'; // blue for 1, green for 2
-                //label.style.color = '#fff';
+                let turnText = (this.playerNum === this.currentPlayer)
+                    ? "Your turn"
+                    : "Other player's turn";
+                label.textContent = `You are Player ${this.playerNum} | ${turnText}`;
+                label.style.color = this.playerNum === 1 ? '#2196f3' : '#43a047';
             } else {
                 label.textContent = '';
                 label.style.background = '';
