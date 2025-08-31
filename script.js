@@ -354,6 +354,14 @@ class SudokuGame {
         this.solution = this.grid.map(row => [...row]);
         const cellsToRemove = this.difficultySettings[this.difficulty];
         this.removeCells(cellsToRemove);
+
+        // Fix: set maxMistakes based on mode
+        if (!this.isMultiplayer) {
+            this.maxMistakes = 10000000; // or your desired value
+        } else {
+            this.maxMistakes = 3;
+        }
+
         this.updateDisplay();
         this.updateMistakeDisplay();
         if (this.isMultiplayer) {
