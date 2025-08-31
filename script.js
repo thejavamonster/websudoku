@@ -229,6 +229,15 @@ class SudokuGame {
 
     onCellClick(event) {
         const cell = event.target;
+        if (
+            cell.classList.contains('correct') ||
+            cell.classList.contains('player1') ||
+            cell.classList.contains('player2') ||
+            cell.disabled
+        ) {
+            return;
+        }
+
             // Multiplayer: Only allow current player to edit 'wrong' cells
             if (this.isMultiplayer && this.ws) {
                 if (this.playerNum !== this.currentPlayer) return;
@@ -427,14 +436,19 @@ class SudokuGame {
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
             const value = this.grid[row][col];
+            const wasCorrect = cell.classList.contains('correct');
             cell.value = value || '';
-            cell.disabled = false;
             cell.classList.remove('prefilled', 'correct', 'wrong', 'player1', 'player2', 'empty');
+            // Prefilled cells
             if (value !== 0) {
                 cell.classList.add('prefilled');
                 cell.disabled = true;
+            } else if (wasCorrect) {
+                cell.classList.add('correct');
+                cell.disabled = true; // <-- Always disable correct cells for all players
             } else {
                 cell.classList.add('empty');
+                cell.disabled = false;
             }
         });
     }
@@ -469,7 +483,13 @@ class SudokuGame {
     setBoardEnabled(enabled) {
         const cells = document.querySelectorAll('.cell');
         cells.forEach(cell => {
-            cell.disabled = !enabled || cell.classList.contains('prefilled');
+            // Always disable prefilled cells and correctly filled cells by any player
+            const shouldBeDisabled = cell.classList.contains('prefilled') || 
+                                    cell.classList.contains('player1') || 
+                                    cell.classList.contains('player2') ||
+                                    cell.classList.contains('correct');
+            
+            cell.disabled = !enabled || shouldBeDisabled;
         });
     }
 
