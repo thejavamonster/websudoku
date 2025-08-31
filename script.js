@@ -99,6 +99,20 @@ class SudokuGame {
         }
     }
 
+    showWinOverlay(title, message, timeText = '') {
+        const overlay = document.getElementById('win-overlay');
+        const titleEl = document.getElementById('win-title');
+        const messageEl = document.getElementById('win-message');
+        const timerEl = document.getElementById('win-timer');
+        
+        if (overlay && titleEl && messageEl && timerEl) {
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            timerEl.textContent = timeText;
+            overlay.style.display = 'flex';
+        }
+    }
+
     setPlayerIdentity() {
         const label = document.getElementById('player-identity');
         if (label) {
@@ -614,11 +628,13 @@ class SudokuGame {
         const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
         const minutes = Math.floor(elapsed / 60);
         const seconds = elapsed % 60;
+        const timeText = `Time: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
         if (this.isMultiplayer) {
             this.endMultiplayerGame();
         } else {
+            this.showWinOverlay('Congratulations!', 'Puzzle solved!', timeText);
             this.showNotification(`Congratulations! Puzzle solved in ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}!`);
-            this.newGame();
         }
         return true;
     }
@@ -626,28 +642,36 @@ class SudokuGame {
     endMultiplayerGame() {
         this.setBoardEnabled(false);
         this.timerRunning = false;
-        let msg;
+        let title, message, timeText = '';
+        
         if (this.player1Mistakes < this.player2Mistakes) {
-            msg = "Game over! Player 1 wins!";
+            title = "Player 1 Wins!";
+            message = `Player 1 had fewer mistakes (${this.player1Mistakes} vs ${this.player2Mistakes})`;
         } else if (this.player2Mistakes < this.player1Mistakes) {
-            msg = "Game over! Player 2 wins!";
+            title = "Player 2 Wins!";
+            message = `Player 2 had fewer mistakes (${this.player2Mistakes} vs ${this.player1Mistakes})`;
         } else {
             if (this.player1Time < this.player2Time) {
-                msg = `Game over! Both players made the same number of mistakes, but Player 1 wins by time (${this.formatTime(this.player1Time)} vs ${this.formatTime(this.player2Time)})!`;
+                title = "Player 1 Wins!";
+                message = "Same mistakes, but faster time!";
+                timeText = `${this.formatTime(this.player1Time)} vs ${this.formatTime(this.player2Time)}`;
             } else if (this.player2Time < this.player1Time) {
-                msg = `Game over! Both players made the same number of mistakes, but Player 2 wins by time (${this.formatTime(this.player2Time)} vs ${this.formatTime(this.player1Time)})!`;
+                title = "Player 2 Wins!";
+                message = "Same mistakes, but faster time!";
+                timeText = `${this.formatTime(this.player2Time)} vs ${this.formatTime(this.player1Time)}`;
             } else {
-                msg = "Game over! It's a draw!";
+                title = "It's a Draw!";
+                message = "Both players performed equally well!";
             }
         }
-        this.showNotification(msg + " New game starting in 10 seconds...");
         
-        setTimeout(() => {
-            this.newGame();
-            this.setBoardEnabled(true);
-            this.timerRunning = true;
-            this.showNotification("New game started!");
-        }, 10000);
+        // Show the overlay
+        this.showWinOverlay(title, message, timeText);
+        
+        // Also show notification for backward compatibility
+        let notifMsg = title + " " + message;
+        if (timeText) notifMsg += " " + timeText;
+        this.showNotification(notifMsg);
     }
 
     async checkSpotifyStatus() {

@@ -28,7 +28,16 @@
             text-align: center;
         "></div>
 
-        <div class="main-frame" style="padding: 16px;">
+        <div class="main-frame" style="padding: 16px; position: relative;">
+            <!-- Add the win overlay -->
+            <div id="win-overlay" class="win-overlay" style="display: none;">
+                <div class="win-content">
+                    <h2 id="win-title">Congratulations!</h2>
+                    <p id="win-message">You solved the puzzle!</p>
+                    <div id="win-timer">Time: 00:00</div>
+                </div>
+            </div>
+            
             <div class="sudoku-grid">
                 <!-- 3x3 subgrids -->
                 <div class="subgrid" data-subgrid="0,0">

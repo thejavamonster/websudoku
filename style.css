@@ -335,6 +335,69 @@ body {
     box-shadow: 0 0 10px rgba(29, 185, 84, 0.2);
 }
 
+/* Win overlay styles */
+.win-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.win-content {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    padding: 40px 30px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 3px solid var(--timer-color);
+    max-width: 90%;
+    animation: slideIn 0.4s ease-out;
+}
+
+.win-content h2 {
+    font-size: 32px;
+    margin-bottom: 15px;
+    color: var(--timer-color);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.win-content p {
+    font-size: 18px;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.win-content #win-timer {
+    font-size: 16px;
+    color: var(--timer-color);
+    font-weight: bold;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { 
+        transform: translateY(-50px) scale(0.9);
+        opacity: 0;
+    }
+    to { 
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
 /* Responsive design */
 @media (max-width: 600px) {
     .sudoku-grid {
@@ -353,6 +416,19 @@ body {
     
     .container {
         padding: 10px;
+    }
+    
+    /* Win overlay responsive styles */
+    .win-content {
+        padding: 30px 20px;
+    }
+    
+    .win-content h2 {
+        font-size: 24px;
+    }
+    
+    .win-content p {
+        font-size: 16px;
     }
 }
 
