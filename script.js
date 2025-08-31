@@ -141,6 +141,14 @@ class SudokuGame {
                 this.player2Time = 0;
                 this._lastTimerUpdate = Date.now();
                 this.timerRunning = true; // Start timer now
+
+                // Update difficulty dropdown to match the game
+                const diffSelect = document.getElementById('difficulty-select');
+                if (diffSelect && data.difficulty) {
+                    diffSelect.value = data.difficulty;
+                    this.difficulty = data.difficulty;
+                }
+
                 this.updateDisplay();
                 this.updateMultiplayerDisplay();
                 this.setPlayerIdentity();

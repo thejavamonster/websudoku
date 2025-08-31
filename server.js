@@ -588,9 +588,11 @@ wss.on('connection', (ws) => {
                 mistakes: rooms[roomId].game.mistakes,
                 currentPlayer: rooms[roomId].game.currentPlayer,
                 playerNum: idx + 1,
-                notify: true
+                notify: true,
+                difficulty: diff // <-- Add this line
             }));
         });
+
     } else {
         ws.send(JSON.stringify({ type: 'waiting', message: 'Waiting for another player...' }));
     }
