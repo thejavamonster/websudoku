@@ -449,6 +449,34 @@ class SudokuGame {
             this.initWebSocket();
         }
         this.newGame();
+            // Reset multiplayer UI and state when switching to singleplayer
+            if (!this.isMultiplayer) {
+                // Hide waiting for player notification
+                const notifBox = document.getElementById('notification-box');
+                if (notifBox) notifBox.textContent = '';
+                // Clear player identity label
+                const playerIdentity = document.getElementById('player-identity');
+                if (playerIdentity) {
+                    playerIdentity.textContent = '';
+                    playerIdentity.style.color = '';
+                    playerIdentity.style.background = '';
+                }
+                // Clear player turn label
+                const playerTurn = document.getElementById('player-turn');
+                if (playerTurn) {
+                    playerTurn.textContent = '';
+                    playerTurn.style.color = '';
+                }
+                // Reset multiplayer state variables
+                this.playerNum = null;
+                this.player1Mistakes = 0;
+                this.player2Mistakes = 0;
+                this.currentPlayer = 1;
+                if (this.ws) {
+                    this.ws.close();
+                    this.ws = null;
+                }
+            }
     }
     changeDifficulty(difficulty) {
         this.difficulty = difficulty;

@@ -379,3 +379,8 @@ body {
     outline: 2px solid var(--timer-color);
     outline-offset: 2px;
 } 
+
+#notification-box,
+#player-identity {
+    color: var(--text-color); /* Black in light mode, white in dark mode */
+}
