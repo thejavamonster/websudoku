@@ -173,6 +173,7 @@ class SudokuGame {
                 this.currentPlayer = data.currentPlayer;
                 this._lastTimerUpdate = Date.now();
                 this.updateMultiplayerDisplay();
+                this.setPlayerIdentity();
 
                 // Show notifications for both players
                 if (this.playerNum === player) {
@@ -187,6 +188,7 @@ class SudokuGame {
                 this.currentPlayer = data.currentPlayer;
                 this._lastTimerUpdate = Date.now();
                 this.updateMultiplayerDisplay();
+                this.setPlayerIdentity();
                 if (data.cell) {
                     const cell = document.querySelector(`.cell[data-row="${data.cell.row}"][data-col="${data.cell.col}"]`);
                     if (cell) {
@@ -227,22 +229,45 @@ class SudokuGame {
 
     onCellClick(event) {
         const cell = event.target;
-        if (cell.disabled) return;
-        if (cell.classList.contains('wrong')) {
-            cell.value = '';
-            cell.classList.remove('wrong');
-            cell.classList.add('empty');
-        }
+            // Multiplayer: Only allow current player to edit 'wrong' cells
+            if (this.isMultiplayer && this.ws) {
+                if (this.playerNum !== this.currentPlayer) return;
+                // Only allow editing if cell is 'wrong' and not disabled
+                if (cell.classList.contains('wrong') && !cell.disabled) {
+                    cell.value = '';
+                    cell.classList.remove('wrong');
+                    cell.classList.add('empty');
+                }
+                return;
+            }
+            // Singleplayer: allow editing wrong cells
+            if (cell.disabled) return;
+            if (cell.classList.contains('wrong')) {
+                cell.value = '';
+                cell.classList.remove('wrong');
+                cell.classList.add('empty');
+            }
     }
 
     onKeyDown(event) {
         const cell = event.target;
-        if (cell.disabled) return;
-        if (event.key === 'Backspace' && cell.classList.contains('wrong')) {
-            cell.value = '';
-            cell.classList.remove('wrong');
-            cell.classList.add('empty');
-        }
+            // Multiplayer: Only allow current player to edit 'wrong' cells
+            if (this.isMultiplayer && this.ws) {
+                if (this.playerNum !== this.currentPlayer) return;
+                if (event.key === 'Backspace' && cell.classList.contains('wrong') && !cell.disabled) {
+                    cell.value = '';
+                    cell.classList.remove('wrong');
+                    cell.classList.add('empty');
+                }
+                return;
+            }
+            // Singleplayer: allow editing wrong cells
+            if (cell.disabled) return;
+            if (event.key === 'Backspace' && cell.classList.contains('wrong')) {
+                cell.value = '';
+                cell.classList.remove('wrong');
+                cell.classList.add('empty');
+            }
     }
 
     checkNumber(cell) {
@@ -258,6 +283,9 @@ class SudokuGame {
             }
             const currentMistakes = this.playerNum === 1 ? this.player1Mistakes : this.player2Mistakes;
             if (currentMistakes >= this.maxMistakes) return;
+                // Prevent editing cells filled by other player
+                if (cell.classList.contains('player1') && this.playerNum !== 1) return;
+                if (cell.classList.contains('player2') && this.playerNum !== 2) return;
         } else {
             if (this.mistakes >= this.maxMistakes) return;
         }
