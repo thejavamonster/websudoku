@@ -396,7 +396,7 @@ class SudokuGame {
     updateMistakeDisplay() {
         const mistakesLabel = document.getElementById('mistakes');
         if (mistakesLabel) {
-            mistakesLabel.textContent = `Mistakes: ${this.mistakes}/${this.maxMistakes}`;
+            mistakesLabel.textContent = `Mistakes: ${this.mistakes}`;
         }
     }
 
@@ -436,6 +436,9 @@ class SudokuGame {
     changeMode(mode) {
         this.gameMode = mode;
         this.isMultiplayer = (mode === "multiplayer");
+        if(!this.isMultiplayer) {
+            this.maxMistakes = 10000000;
+        }
         const diffSelect = document.getElementById('difficulty-select');
         if (diffSelect) {
             diffSelect.disabled = this.isMultiplayer;
