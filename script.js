@@ -20,6 +20,8 @@ class SudokuGame {
         this._lastTimerUpdate = Date.now();
 
         this.ws = null;
+        this.chatMessages = [];
+        this.chatVisible = true;
 
         this.spotifyConnected = false;
         this.currentSong = "No song playing";
@@ -55,6 +57,7 @@ class SudokuGame {
         this.animateWaves();
         this.checkThemeChange();
         this.checkSpotifyStatus();
+        this.setupChatListeners();
         if (this.isMultiplayer) {
             this.initWebSocket();
         }
@@ -85,6 +88,96 @@ class SudokuGame {
         }
 
         this.setupDropdownListeners();
+    }
+
+    setupChatListeners() {
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+        const chatToggle = document.getElementById('chat-toggle');
+        const chatToggleMain = document.getElementById('chat-toggle-main');
+        
+        if (chatInput && chatSend) {
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendChatMessage();
+                }
+            });
+            
+            chatSend.addEventListener('click', () => {
+                this.sendChatMessage();
+            });
+        }
+        
+        if (chatToggle) {
+            chatToggle.addEventListener('click', () => {
+                this.toggleChat();
+            });
+        }
+        
+        if (chatToggleMain) {
+            chatToggleMain.addEventListener('click', () => {
+                this.toggleChat();
+            });
+        }
+    }
+
+    toggleChat() {
+        const chatSidebar = document.getElementById('chat-sidebar');
+        if (chatSidebar) {
+            this.chatVisible = !this.chatVisible;
+            if (this.chatVisible) {
+                chatSidebar.classList.remove('hidden');
+            } else {
+                chatSidebar.classList.add('hidden');
+            }
+        }
+    }
+
+    sendChatMessage() {
+        if (!this.isMultiplayer) return;
+        
+        const chatInput = document.getElementById('chat-input');
+        if (!chatInput || !chatInput.value.trim()) return;
+        
+        const message = chatInput.value.trim();
+        chatInput.value = '';
+        
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'chat',
+                message: message,
+                player: this.playerNum
+            }));
+        }
+    }
+
+    addChatMessage(sender, message, type = 'other') {
+        const chatMessages = document.getElementById('chat-messages');
+        if (!chatMessages) return;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${type}`;
+        
+        if (type === 'system') {
+            messageDiv.textContent = message;
+        } else {
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${this.escapeHtml(message)}`;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Keep only last 50 messages
+        while (chatMessages.children.length > 50) {
+            chatMessages.removeChild(chatMessages.firstChild);
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     showNotification(message) {
@@ -168,6 +261,12 @@ class SudokuGame {
                 this.setPlayerIdentity();
                 if (data.notify) {
                     this.showNotification(`Both players are connected! Game starts now. You are Player ${this.playerNum}.`);
+                    this.addChatMessage('System', `Game started! You are Player ${this.playerNum}`, 'system');
+                    // Show chat when game starts
+                    const chatSidebar = document.getElementById('chat-sidebar');
+                    const chatToggleBtn = document.getElementById('chat-toggle-main');
+                    if (chatSidebar) chatSidebar.classList.remove('hidden');
+                    if (chatToggleBtn) chatToggleBtn.classList.remove('hidden');
                 } else {
                     this.showNotification(`You are Player ${this.playerNum}. Waiting for another player...`);
                 }
@@ -218,6 +317,11 @@ class SudokuGame {
             }
             if (data.type === 'gameover') {
                 this.endMultiplayerGame();
+            }
+            if (data.type === 'chat') {
+                const senderName = `Player ${data.player}`;
+                const messageType = data.player === this.playerNum ? 'own' : 'other';
+                this.addChatMessage(senderName, data.message, messageType);
             }
         };
     }
@@ -523,43 +627,51 @@ class SudokuGame {
         if (diffSelect) {
             diffSelect.disabled = this.isMultiplayer;
         }
+        
+        // Hide chat initially - only show when multiplayer game starts
+        const chatSidebar = document.getElementById('chat-sidebar');
+        const chatToggleBtn = document.getElementById('chat-toggle-main');
+        if (chatSidebar) chatSidebar.classList.add('hidden');
+        if (chatToggleBtn) chatToggleBtn.classList.add('hidden');
+        
         // Reset timers and pause timer
         this.player1Time = 0;
         this.player2Time = 0;
-        this.timerRunning = false; // <--- PAUSE TIMER
+        this.timerRunning = false;
         this._lastTimerUpdate = Date.now();
         if (this.isMultiplayer) {
             this.initWebSocket();
         }
         this.newGame();
-            // Reset multiplayer UI and state when switching to singleplayer
-            if (!this.isMultiplayer) {
-                // Hide waiting for player notification
-                const notifBox = document.getElementById('notification-box');
-                if (notifBox) notifBox.textContent = '';
-                // Clear player identity label
-                const playerIdentity = document.getElementById('player-identity');
-                if (playerIdentity) {
-                    playerIdentity.textContent = '';
-                    playerIdentity.style.color = '';
-                    playerIdentity.style.background = '';
-                }
-                // Clear player turn label
-                const playerTurn = document.getElementById('player-turn');
-                if (playerTurn) {
-                    playerTurn.textContent = '';
-                    playerTurn.style.color = '';
-                }
-                // Reset multiplayer state variables
-                this.playerNum = null;
-                this.player1Mistakes = 0;
-                this.player2Mistakes = 0;
-                this.currentPlayer = 1;
-                if (this.ws) {
-                    this.ws.close();
-                    this.ws = null;
-                }
+        
+        // Reset multiplayer UI and state when switching to singleplayer
+        if (!this.isMultiplayer) {
+            const notifBox = document.getElementById('notification-box');
+            if (notifBox) notifBox.textContent = '';
+            const playerIdentity = document.getElementById('player-identity');
+            if (playerIdentity) {
+                playerIdentity.textContent = '';
+                playerIdentity.style.color = '';
+                playerIdentity.style.background = '';
             }
+            const playerTurn = document.getElementById('player-turn');
+            if (playerTurn) {
+                playerTurn.textContent = '';
+                playerTurn.style.color = '';
+            }
+            // Clear chat messages
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) chatMessages.innerHTML = '';
+            
+            this.playerNum = null;
+            this.player1Mistakes = 0;
+            this.player2Mistakes = 0;
+            this.currentPlayer = 1;
+            if (this.ws) {
+                this.ws.close();
+                this.ws = null;
+            }
+        }
     }
     changeDifficulty(difficulty) {
         this.difficulty = difficulty;
