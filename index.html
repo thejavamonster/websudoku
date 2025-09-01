@@ -3,22 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sudoku X Spotify</title>
+    <title>Websudoku</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="container">
-        <div id="notification-box" style="
-            width: 100%;
-            padding: 16px;
-            font-size: 1rem;
-            box-sizing: border-box;
-            min-height: 24px;
-            opacity: 0.95;
-            transition: opacity 0.3s;
-            text-align: center;
-        "></div>
+    <div class="app-container">
+        <div class="container">
+            <div id="notification-box" style="
+                width: 100%;
+                padding: 16px;
+                font-size: 1rem;
+                box-sizing: border-box;
+                min-height: 24px;
+                opacity: 0.95;
+                transition: opacity 0.3s;
+                text-align: center;
+            "></div>
         <div id="player-identity" style="
             width: 100%;
             padding: 16px;
@@ -177,8 +178,24 @@
             </div>
             <div class="song-label" id="song-info">No song playing</div>
         </div>
+        
+        <button class="chat-toggle-btn hidden" id="chat-toggle-main">Enkryptonite</button>
 
         <canvas id="wave-canvas" class="wave-canvas" width="400" height="80"></canvas>
+        </div>
+        
+        
+        <div class="chat-sidebar hidden" id="chat-sidebar">
+            <div class="chat-header">
+                <h3>Enkryptonite - Developed by SafeComms Incorporated</h3>
+                <button class="chat-toggle" id="chat-toggle">×</button>
+            </div>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-container">
+                <input type="text" id="chat-input" placeholder="Type a message..." maxlength="200">
+                <button id="chat-send">Send</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
