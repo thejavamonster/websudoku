@@ -600,11 +600,31 @@ wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         let data;
         try { data = JSON.parse(message); } catch { return; }
+        
+        const room = rooms[ws.roomId];
+        if (!room) return;
+        
         if (data.type === 'join') {
             ws.selectedDifficulty = data.difficulty || "Easy";
+            return;
         }
-        const room = rooms[ws.roomId];
-        if (!room || !room.game) return;
+        
+        if (data.type === 'chat') {
+            // Broadcast chat message to all players in the room
+            room.players.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: 'chat',
+                        message: data.message,
+                        player: data.player
+                    }));
+                }
+            });
+            return;
+        }
+        
+        // Game-related messages require an active game
+        if (!room.game) return;
 
         if (data.type === 'move') {
             const { row, col, value, player } = data.move;
