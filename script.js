@@ -202,6 +202,8 @@ class SudokuGame {
                 box.style.opacity = 0.7;
             }, 5000);
         }
+        // Also send notification to chat as a system message
+        this.addChatMessage('System', message, 'system');
     }
 
     showWinOverlay(title, message, timeText = '') {
@@ -273,7 +275,6 @@ class SudokuGame {
                 this.setPlayerIdentity();
                 if (data.notify) {
                     this.showNotification(`Both players are connected! Game starts now. You are Player ${this.playerNum}.`);
-                    this.addChatMessage('System', `Game started! You are Player ${this.playerNum}`, 'system');
                     // Show chat when game starts
                     const chatSidebar = document.getElementById('chat-sidebar');
                     const chatToggleBtn = document.getElementById('chat-toggle-main');
