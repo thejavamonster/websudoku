@@ -159,7 +159,19 @@ class SudokuGame {
         const messageDiv = document.createElement('div');
         messageDiv.className = `chat-message ${type}`;
         
+        // Set bubble color for player messages
+        if (type === 'own' || type === 'other') {
+            if (sender === 'Player 1') {
+                messageDiv.style.backgroundColor = 'var(--player1-color)';
+                messageDiv.style.color = 'white';
+            } else if (sender === 'Player 2') {
+                messageDiv.style.backgroundColor = 'var(--player2-color)';
+                messageDiv.style.color = 'white';
+            }
+        }
+
         if (type === 'system') {
+            messageDiv.style.backgroundColor = 'gray';
             messageDiv.textContent = message;
         } else {
             messageDiv.innerHTML = `<strong>${sender}:</strong> ${this.escapeHtml(message)}`;

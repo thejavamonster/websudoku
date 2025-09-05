@@ -524,8 +524,10 @@ body {
 
 .chat-message {
     margin-bottom: 8px;
-    padding: 8px 12px;
-    border-radius: 12px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    display: block;
+    width: fit-content;
     max-width: 80%;
     word-wrap: break-word;
     font-size: 14px;
@@ -548,10 +550,11 @@ body {
 .chat-message.system {
     background-color: var(--spotify-green);
     color: white;
-    margin: 0 auto;
+    margin: 0 auto 12px auto;
     text-align: center;
     font-style: italic;
     max-width: 90%;
+    padding: 8px;
 }
 
 .chat-input-container {
