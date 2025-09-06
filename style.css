@@ -28,36 +28,8 @@
         display: none;
         flex-direction: column;
         background-color: var(--bg-color);
-        height: 100dvh !important;
-        padding-bottom: 0 !important;
-    }
-    .chat-header {
-        position: sticky;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        z-index: 10;
-        border-radius: 0;
-    }
-    .chat-input-container {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100vw;
-        z-index: 11;
-        background: var(--grid-bg);
-        border-radius: 0;
-        padding: 10px 8px 10px 8px;
-        box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
-        gap: 8px;
-    }
-    .chat-messages {
-        flex: 1 1 auto;
-        overflow-y: auto;
-        min-height: 0;
-        max-height: calc(100dvh - 56px - 56px); /* header + input heights */
-        margin-bottom: 56px; /* space for input */
-        padding-top: 56px;
+        height: auto !important;
+        max-height: 100dvh !important;
     }
     .chat-messages {
         flex: 1 1 auto;
