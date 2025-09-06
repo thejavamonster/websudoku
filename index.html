@@ -212,4 +212,12 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 </body>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('input.cell').forEach(function(input) {
+            input.setAttribute('inputmode', 'numeric');
+            input.setAttribute('pattern', '[1-9]');
+        });
+    });
+</script>
 </html>
