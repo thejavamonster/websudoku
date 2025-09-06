@@ -1,11 +1,27 @@
 /* Chat modal overlay for mobile */
 @media (max-width: 700px) {
+    .chat-input-container {
+        flex-direction: row;
+        gap: 8px;
+        padding: 10px;
+    }
+    #chat-input, #chat-send {
+        min-width: 0;
+        max-width: none;
+        box-sizing: border-box;
+    }
+    #chat-input {
+        flex: 1 1 0%;
+    }
+    #chat-send {
+        flex: 0 0 auto;
+    }
     .chat-sidebar {
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
         width: 100vw !important;
-        height: 100vh !important;
+        height: 100dvh !important; /* Use dynamic viewport for better mobile keyboard handling */
         max-width: none !important;
         z-index: 2000 !important;
         border-radius: 0 !important;
@@ -596,10 +612,25 @@ body {
 
 .chat-input-container {
     display: flex;
-    padding: 12px;
+    flex-direction: row;
     gap: 8px;
+    padding: 12px;
     background-color: var(--grid-bg);
     border-radius: 0 0 6px 6px;
+}
+
+#chat-input, #chat-send {
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+#chat-input {
+    flex: 1 1 0%;
+}
+
+#chat-send {
+    flex: 0 0 auto;
 }
 
 #chat-input {
@@ -609,7 +640,7 @@ body {
     border-radius: 20px;
     background-color: var(--bg-color);
     color: var(--text-color);
-    font-size: 14px;
+    font-size: 16px; /* Prevent iOS zoom on focus */
     outline: none;
 }
 
