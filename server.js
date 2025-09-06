@@ -354,7 +354,7 @@ function generateSudoku(difficulty = "Easy", randomize = false) {
         }
     }
     let solution = grid.map(row => [...row]);
-    let cellsToRemove = 35;
+    let cellsToRemove = 35; //35
     if (difficulty === "Medium") cellsToRemove = 45;
     if (difficulty === "Hard") cellsToRemove = 55;
     if (difficulty === "Stupidly Hard") cellsToRemove = 60;
@@ -640,6 +640,24 @@ wss.on('connection', (ws) => {
                     }));
                 }
             });
+
+            // Check if the board is solved after this move
+            const isSolved = room.game.grid.every((rowArr, i) =>
+                rowArr.every((cell, j) => cell === room.game.solution[i][j])
+            );
+            if (isSolved) {
+                // Send gameover to both players with mistakes info
+                room.players.forEach((client, idx) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({
+                            type: 'gameover',
+                            player1Mistakes: room.game.mistakes[0],
+                            player2Mistakes: room.game.mistakes[1]
+                        }));
+                    }
+                });
+                room.game = null;
+            }
         }
         if (data.type === 'mistake') {
             const idx = data.player - 1;

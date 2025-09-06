@@ -1,3 +1,40 @@
+/* Chat modal overlay for mobile */
+@media (max-width: 700px) {
+    .chat-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        z-index: 2000 !important;
+        border-radius: 0 !important;
+        box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+        display: none;
+        flex-direction: column;
+        background-color: var(--bg-color);
+    }
+    .chat-sidebar.mobile-active {
+        display: flex !important;
+    }
+    .chat-sidebar.hidden {
+        display: none !important;
+    }
+}
+
+/* Unread badge for chat button */
+.chat-toggle-btn .unread-badge {
+    display: inline-block;
+    min-width: 18px;
+    padding: 2px 6px;
+    font-size: 12px;
+    background: var(--mistake-color);
+    color: #fff;
+    border-radius: 12px;
+    margin-left: 6px;
+    vertical-align: middle;
+    font-weight: bold;
+}
 /* Dark mode detection and color scheme */
 :root {
     --bg-color: #FFFFFF;

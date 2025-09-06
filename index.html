@@ -6,6 +6,8 @@
     <title>Websudoku</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="image.png" type="image/png">
+    <!--<link rel="manifest" href="manifest.json">-->
+
 
 </head>
 <body>
@@ -168,8 +170,7 @@
 
         <div class="timer-label" id="timer">Time: 00:00</div>
         <div class="mistake-label" id="mistakes">Mistakes: 0/3</div>
-        <div class="player-label" id="player-turn"></div>
-
+        <!--
         <div class="spotify-frame">
             <div class="soundwave-dropdown">
                 <button id="soundwave-btn" class="soundwave-button">Soundwave Options</button>
@@ -179,11 +180,13 @@
                 </div>
             </div>
             <div class="song-label" id="song-info">No song playing</div>
-        </div>
-        
-        <button class="chat-toggle-btn hidden" id="chat-toggle-main">Enkryptonite</button>
+        </div> -->
+                <button class="chat-toggle-btn hidden" id="chat-toggle-main">
+                    Open chat
+                    <span class="unread-badge" id="chat-unread-badge" style="display:none;">0</span>
+                </button>
 
-        <canvas id="wave-canvas" class="wave-canvas" width="400" height="80"></canvas>
+        <!--<canvas id="wave-canvas" class="wave-canvas" width="400" height="80"></canvas>-->
         </div>
         
         
@@ -201,5 +204,12 @@
     </div>
 
     <script src="script.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('service-worker.js');
+  });
+}
+</script>
 </body>
-</html> 
+</html>

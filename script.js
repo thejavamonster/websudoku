@@ -22,6 +22,7 @@ class SudokuGame {
         this.ws = null;
         this.chatMessages = [];
         this.chatVisible = true;
+        this.unreadChatCount = 0;
 
         this.spotifyConnected = false;
         this.currentSong = "No song playing";
@@ -38,7 +39,7 @@ class SudokuGame {
         this.waveAnimationRunning = true;
 
         this.difficultySettings = {
-            "Easy": 35,
+            "Easy": 35, //35
             "Medium": 45,
             "Hard": 55,
             "Stupidly Hard": 60,
@@ -58,10 +59,21 @@ class SudokuGame {
         this.checkThemeChange();
         this.checkSpotifyStatus();
         this.setupChatListeners();
+
+        // On mobile, close chat by default
+        const isMobile = window.innerWidth <= 700;
+        if (isMobile) {
+            this.chatVisible = false;
+            const chatSidebar = document.getElementById('chat-sidebar');
+            if (chatSidebar) {
+                chatSidebar.classList.remove('mobile-active');
+                chatSidebar.classList.add('hidden');
+            }
+        }
+
         if (this.isMultiplayer) {
             this.initWebSocket();
         }
-        
         // Initialize song display
         this.updateSongDisplay();
     }
@@ -117,17 +129,34 @@ class SudokuGame {
         
         if (chatToggleMain) {
             chatToggleMain.addEventListener('click', () => {
-                this.toggleChat();
+                this.toggleChat(true);
             });
         }
     }
 
-    toggleChat() {
+    toggleChat(forceOpen = null) {
         const chatSidebar = document.getElementById('chat-sidebar');
-        if (chatSidebar) {
-            this.chatVisible = !this.chatVisible;
-            if (this.chatVisible) {
+        const unreadBadge = document.getElementById('chat-unread-badge');
+        if (!chatSidebar) return;
+
+        // Detect mobile/narrow screen
+        const isMobile = window.innerWidth <= 700;
+
+        if (forceOpen === true || (forceOpen === null && !this.chatVisible)) {
+            this.chatVisible = true;
+            if (isMobile) {
+                chatSidebar.classList.add('mobile-active');
                 chatSidebar.classList.remove('hidden');
+            } else {
+                chatSidebar.classList.remove('hidden');
+            }
+            this.unreadChatCount = 0;
+            if (unreadBadge) unreadBadge.style.display = 'none';
+        } else {
+            this.chatVisible = false;
+            if (isMobile) {
+                chatSidebar.classList.remove('mobile-active');
+                chatSidebar.classList.add('hidden');
             } else {
                 chatSidebar.classList.add('hidden');
             }
@@ -154,6 +183,8 @@ class SudokuGame {
 
     addChatMessage(sender, message, type = 'other') {
         const chatMessages = document.getElementById('chat-messages');
+        const chatSidebar = document.getElementById('chat-sidebar');
+        const unreadBadge = document.getElementById('chat-unread-badge');
         if (!chatMessages) return;
         
         const messageDiv = document.createElement('div');
@@ -183,6 +214,15 @@ class SudokuGame {
         // Keep only last 50 messages
         while (chatMessages.children.length > 50) {
             chatMessages.removeChild(chatMessages.firstChild);
+        }
+
+        // If chat is hidden, increment unread count and show badge (on all screens)
+        if ((chatSidebar.classList.contains('hidden') || !this.chatVisible)) {
+            this.unreadChatCount = (this.unreadChatCount || 0) + 1;
+            if (unreadBadge) {
+                unreadBadge.textContent = this.unreadChatCount;
+                unreadBadge.style.display = '';
+            }
         }
     }
 
@@ -275,10 +315,17 @@ class SudokuGame {
                 this.setPlayerIdentity();
                 if (data.notify) {
                     this.showNotification(`Both players are connected! Game starts now. You are Player ${this.playerNum}.`);
-                    // Show chat when game starts
+                    // Show chat when game starts (desktop only)
                     const chatSidebar = document.getElementById('chat-sidebar');
                     const chatToggleBtn = document.getElementById('chat-toggle-main');
-                    if (chatSidebar) chatSidebar.classList.remove('hidden');
+                    const isMobile = window.innerWidth <= 700;
+                    if (chatSidebar && !isMobile) {
+                        chatSidebar.classList.remove('hidden');
+                        this.chatVisible = true;
+                        this.unreadChatCount = 0;
+                        const unreadBadge = document.getElementById('chat-unread-badge');
+                        if (unreadBadge) unreadBadge.style.display = 'none';
+                    }
                     if (chatToggleBtn) chatToggleBtn.classList.remove('hidden');
                 } else {
                     this.showNotification(`You are Player ${this.playerNum}. Waiting for another player...`);
@@ -329,6 +376,9 @@ class SudokuGame {
                 }
             }
             if (data.type === 'gameover') {
+                // If mistakes info is present, update local state
+                if (typeof data.player1Mistakes !== 'undefined') this.player1Mistakes = data.player1Mistakes;
+                if (typeof data.player2Mistakes !== 'undefined') this.player2Mistakes = data.player2Mistakes;
                 this.endMultiplayerGame();
             }
             if (data.type === 'chat') {
@@ -596,12 +646,6 @@ class SudokuGame {
         if (mistakesLabel) {
             mistakesLabel.textContent =
                 `Player 1: ${this.player1Mistakes}/${this.maxMistakes} mistakes | Player 2: ${this.player2Mistakes}/${this.maxMistakes} mistakes`;
-        }
-        const playerLabel = document.getElementById('player-turn');
-        if (playerLabel) {
-            const playerColor = this.currentPlayer === 1 ? 'var(--player1-color)' : 'var(--player2-color)';
-            playerLabel.textContent = `Player ${this.currentPlayer}'s Turn`;
-            playerLabel.style.color = playerColor;
         }
         // Disable board if it's not your turn
         if (this.isMultiplayer && this.playerNum !== this.currentPlayer) {
