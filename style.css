@@ -1,5 +1,48 @@
 /* Chat modal overlay for mobile */
 @media (max-width: 700px) {
+    .chat-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-width: none !important;
+        z-index: 2000 !important;
+        border-radius: 0 !important;
+        box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+        display: flex !important;
+        flex-direction: column !important;
+        background-color: var(--bg-color);
+        padding: 0 !important;
+    }
+    .chat-header {
+        position: sticky !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        z-index: 10 !important;
+        border-radius: 0 !important;
+    }
+    .chat-messages {
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin-bottom: 0 !important;
+        padding-top: 0 !important;
+    }
+    .chat-input-container {
+        position: sticky !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        z-index: 11 !important;
+        background: var(--grid-bg) !important;
+        border-radius: 0 !important;
+        padding: 10px 8px 10px 8px !important;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.08) !important;
+        gap: 8px !important;
+    }
     .chat-input-container {
         flex-direction: row;
         gap: 8px;
