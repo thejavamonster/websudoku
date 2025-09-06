@@ -1,4 +1,4 @@
-/*const CACHE_NAME = 'websudoku-cache-v3';
+const CACHE_NAME = 'websudoku-cache-v7';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -32,4 +32,3 @@ self.addEventListener('activate', event => {
   );
   self.clients.claim(); // Take control of all clients
 });
-*/
