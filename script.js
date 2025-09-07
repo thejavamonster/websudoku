@@ -682,12 +682,16 @@ class SudokuGame {
     }
 
     changeMode(mode) {
+    // Hide win overlay if visible
+    const overlay = document.getElementById('win-overlay');
+    if (overlay) overlay.style.display = 'none';
         this.gameMode = mode;
         this.isMultiplayer = (mode === "multiplayer");
         if(!this.isMultiplayer) {
             this.maxMistakes = 10000000;
         }
         const diffSelect = document.getElementById('difficulty-select');
+
         if (diffSelect) {
             diffSelect.disabled = this.isMultiplayer;
         }
@@ -738,12 +742,18 @@ class SudokuGame {
         }
     }
     changeDifficulty(difficulty) {
-        this.difficulty = difficulty;
-        this.newGame();
+    this.difficulty = difficulty;
+    // Hide win overlay if visible
+    const overlay = document.getElementById('win-overlay');
+    if (overlay) overlay.style.display = 'none';
+    this.newGame();
     }
 
     newGame() {
-        this.generatePuzzle();
+    // Hide win overlay if visible
+    const overlay = document.getElementById('win-overlay');
+    if (overlay) overlay.style.display = 'none';
+    this.generatePuzzle();
     }
 
     updateTimer() {
