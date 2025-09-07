@@ -382,7 +382,7 @@ class SudokuGame {
                 if (data.message === 'Other player disconnected.') {
                     this.setBoardEnabled(false);
                     this.timerRunning = false;
-                    this.showWinOverlay('Game ended', 'The other player disconnected. No winner.');
+                    this.showWinOverlay('Game ended blergha', 'The other player disconnected. No winner.');
                     this.showNotification('Game ended: the other player disconnected.');
                 } else {
                     this.endMultiplayerGame();
