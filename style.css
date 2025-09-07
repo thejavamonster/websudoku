@@ -494,29 +494,29 @@ body {
         width: 350px;
         height: 350px;
     }
-    
+
     .cell {
         font-size: 16px;
     }
-    
+
     .controls-frame {
         flex-direction: column;
         gap: 10px;
     }
-    
+
     .container {
         padding: 10px;
     }
-    
+
     /* Win overlay responsive styles */
     .win-content {
         padding: 30px 20px;
     }
-    
+
     .win-content h2 {
         font-size: 24px;
     }
-    
+
     .win-content p {
         font-size: 16px;
     }
@@ -732,7 +732,7 @@ body {
         flex-direction: column;
         align-items: center;
     }
-    
+
     .chat-sidebar {
         width: 100%;
         max-width: 550px;
@@ -746,7 +746,7 @@ body {
     .chat-sidebar {
         height: 250px;
     }
-    
+
     .chat-message {
         font-size: 13px;
         padding: 6px 10px;
