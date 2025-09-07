@@ -812,20 +812,22 @@ class SudokuGame {
         this.setBoardEnabled(false);
         this.timerRunning = false;
         let title, message, timeText = '';
-        
+
+        // Determine winner
+        let winner = null;
         if (this.player1Mistakes < this.player2Mistakes) {
-            title = "Player 1 Wins!";
+            winner = 1;
             message = `Player 1 had fewer mistakes (${this.player1Mistakes} vs ${this.player2Mistakes})`;
         } else if (this.player2Mistakes < this.player1Mistakes) {
-            title = "Player 2 Wins!";
+            winner = 2;
             message = `Player 2 had fewer mistakes (${this.player2Mistakes} vs ${this.player1Mistakes})`;
         } else {
             if (this.player1Time < this.player2Time) {
-                title = "Player 1 Wins!";
+                winner = 1;
                 message = "Same mistakes, but faster time!";
                 timeText = `${this.formatTime(this.player1Time)} vs ${this.formatTime(this.player2Time)}`;
             } else if (this.player2Time < this.player1Time) {
-                title = "Player 2 Wins!";
+                winner = 2;
                 message = "Same mistakes, but faster time!";
                 timeText = `${this.formatTime(this.player2Time)} vs ${this.formatTime(this.player1Time)}`;
             } else {
@@ -833,10 +835,19 @@ class SudokuGame {
                 message = "Both players performed equally well!";
             }
         }
-        
+
+        // Set title based on winner
+        if (winner) {
+            if (this.playerNum === winner) {
+                title = "You win!";
+            } else {
+                title = `Player ${winner} wins!`;
+            }
+        }
+
         // Show the overlay
         this.showWinOverlay(title, message, timeText);
-        
+
         // Also show notification for backward compatibility
         let notifMsg = title + " " + message;
         if (timeText) notifMsg += " " + timeText;
