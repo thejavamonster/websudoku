@@ -1,4 +1,4 @@
-const CACHE_NAME = 'websudoku-cache-v20';
+const CACHE_NAME = 'websudoku-cache-v21';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -18,7 +18,20 @@ self.addEventListener('install', event => {
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
+    caches.open(CACHE_NAME).then(cache => {
+      return fetch(event.request)
+        .then(networkResponse => {
+          // Update cache with latest version
+          if (event.request.method === 'GET' && networkResponse && networkResponse.status === 200) {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // If network fails, try cache
+          return cache.match(event.request);
+        });
+    })
   );
 });
 
