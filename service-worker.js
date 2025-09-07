@@ -1,4 +1,4 @@
-const CACHE_NAME = 'websudoku-cache-v18';
+const CACHE_NAME = 'websudoku-cache-v20';
 const urlsToCache = [
   '/',
   '/index.html',

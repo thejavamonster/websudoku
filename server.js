@@ -694,13 +694,22 @@ wss.on('connection', (ws) => {
         const room = rooms[ws.roomId];
         if (!room) return;
         room.players = room.players.filter(client => client !== ws);
-        if (room.players.length < 2) {
+        if (room.players.length === 1 && room.game) {
+            // If a game was active, send gameover to the remaining player
+            const remainingClient = room.players[0];
+            if (remainingClient.readyState === WebSocket.OPEN) {
+                remainingClient.send(JSON.stringify({
+                    type: 'gameover',
+                    message: 'Other player disconnected.'
+                }));
+            }
             room.game = null;
-            room.players.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: 'waiting', message: 'Other player disconnected.' }));
-                }
-            });
+        } else if (room.players.length === 1) {
+            // No active game, just notify waiting
+            const remainingClient = room.players[0];
+            if (remainingClient.readyState === WebSocket.OPEN) {
+                remainingClient.send(JSON.stringify({ type: 'waiting', message: 'Other player disconnected.' }));
+            }
         }
         // Clean up empty rooms
         if (room.players.length === 0) {

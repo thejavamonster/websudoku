@@ -379,7 +379,14 @@ class SudokuGame {
                 // If mistakes info is present, update local state
                 if (typeof data.player1Mistakes !== 'undefined') this.player1Mistakes = data.player1Mistakes;
                 if (typeof data.player2Mistakes !== 'undefined') this.player2Mistakes = data.player2Mistakes;
-                this.endMultiplayerGame();
+                if (data.message === 'Other player disconnected.') {
+                    this.setBoardEnabled(false);
+                    this.timerRunning = false;
+                    this.showWinOverlay('Game ended', 'The other player disconnected. No winner.');
+                    this.showNotification('Game ended: the other player disconnected.');
+                } else {
+                    this.endMultiplayerGame();
+                }
             }
             if (data.type === 'chat') {
                 const senderName = `Player ${data.player}`;
