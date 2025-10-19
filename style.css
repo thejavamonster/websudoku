@@ -195,7 +195,7 @@ body {
     font-family: Arial, sans-serif;
     background-color: var(--empty-cell-bg);
     color: var(--empty-cell-fg);
-    transition: all 0.2s ease;
+    transition: none;
     cursor: pointer;
 }
 
