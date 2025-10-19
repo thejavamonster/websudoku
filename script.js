@@ -685,6 +685,19 @@ class SudokuGame {
     // Hide win overlay if visible
     const overlay = document.getElementById('win-overlay');
     if (overlay) overlay.style.display = 'none';
+
+    // Clear any lingering cell highlights by resetting all cells immediately
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cell => {
+        cell.classList.remove('wrong', 'correct', 'player1', 'player2', 'empty', 'prefilled');
+        cell.classList.add('empty');
+        cell.disabled = false;
+        cell.value = '';
+        cell.style.backgroundColor = ''; // Clear any inline background
+        cell.style.color = ''; // Clear any inline color
+        cell.blur(); // Remove focus to prevent focus ring stains
+    });
+
         this.gameMode = mode;
         this.isMultiplayer = (mode === "multiplayer");
         if(!this.isMultiplayer) {
@@ -695,13 +708,13 @@ class SudokuGame {
         if (diffSelect) {
             diffSelect.disabled = this.isMultiplayer;
         }
-        
+
         // Hide chat initially - only show when multiplayer game starts
         const chatSidebar = document.getElementById('chat-sidebar');
         const chatToggleBtn = document.getElementById('chat-toggle-main');
         if (chatSidebar) chatSidebar.classList.add('hidden');
         if (chatToggleBtn) chatToggleBtn.classList.add('hidden');
-        
+
         // Reset timers and pause timer
         this.player1Time = 0;
         this.player2Time = 0;
@@ -711,7 +724,7 @@ class SudokuGame {
             this.initWebSocket();
         }
         this.newGame();
-        
+
         // Reset multiplayer UI and state when switching to singleplayer
         if (!this.isMultiplayer) {
             const notifBox = document.getElementById('notification-box');
@@ -730,7 +743,7 @@ class SudokuGame {
             // Clear chat messages
             const chatMessages = document.getElementById('chat-messages');
             if (chatMessages) chatMessages.innerHTML = '';
-            
+
             this.playerNum = null;
             this.player1Mistakes = 0;
             this.player2Mistakes = 0;
@@ -746,6 +759,19 @@ class SudokuGame {
     // Hide win overlay if visible
     const overlay = document.getElementById('win-overlay');
     if (overlay) overlay.style.display = 'none';
+
+    // Clear any lingering cell highlights when changing difficulty
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cell => {
+        cell.classList.remove('wrong', 'correct', 'player1', 'player2', 'empty', 'prefilled');
+        cell.classList.add('empty');
+        cell.disabled = false;
+        cell.value = '';
+        cell.style.backgroundColor = ''; // Clear any inline background
+        cell.style.color = ''; // Clear any inline color
+        cell.blur();
+    });
+
     this.newGame();
     }
 
