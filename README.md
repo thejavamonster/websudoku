@@ -60,6 +60,7 @@ This Agreement shall be governed by the laws of the United States of America.
 For licensing inquiries, contact: 
 
 vajra@ohs.stanford.edu
+
 jules328@ohs.stanford.edu
 
 ---
