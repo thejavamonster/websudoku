@@ -114,8 +114,8 @@ class SudokuGame {
                     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                         this.ws.send(JSON.stringify({ type: 'leave-game' }));
                     }
-                    this.changeMode('single');
-                    this.showNotification('You left the multiplayer game.');
+                    // Hard reload to reset all state (like a hard cache reset)
+                    window.location.reload(true);
                 }
             });
         }
@@ -462,6 +462,10 @@ class SudokuGame {
         this.currentRoomId = roomId;
         this.difficulty = difficulty || 'Easy';
 
+        // Show Leave Game button
+        const leaveGameBtn = document.getElementById('leave-game-btn');
+        if (leaveGameBtn) leaveGameBtn.style.display = '';
+
         const diffSelect = document.getElementById('difficulty-select');
         if (diffSelect) {
             diffSelect.value = this.difficulty;
@@ -784,6 +788,10 @@ class SudokuGame {
                     this.timerRunning = false;
                     this.showWinOverlay('You win!', 'Other player disconnected.');
                     this.showNotification('You win! The other player disconnected.');
+                } else if (data.message) {
+                    // If the other player left, show a notification and reset to home
+                    this.showNotification(data.message);
+                    setTimeout(() => window.location.reload(true), 1200);
                 } else {
                     this.endMultiplayerGame();
                 }
