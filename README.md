@@ -1,4 +1,4 @@
-Websudoku is one of the first and one of the best sudoku single and multiplayer websites produced by Nixon Incorporated. Bringing people together with a game of sudoku, more thasn one pertson can enjoy a game of sudoku, developing new skills and making new friends along the way. 
+Websudoku is one of the first and one of the best sudoku single and multiplayer websites produced by Nixon Incorporated. Bringing people together with a game of sudoku, more than one person can enjoy a game of sudoku, developing new skills and making new friends along the way. 
 
 License:
 # Websudoku License Agreement
