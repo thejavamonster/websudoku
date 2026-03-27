@@ -20,9 +20,16 @@ class SudokuGame {
         this._lastTimerUpdate = Date.now();
 
         this.ws = null;
+        this.wsConnected = false;
+        this.currentRoomId = null;
         this.chatMessages = [];
         this.chatVisible = true;
         this.unreadChatCount = 0;
+
+        this.authUser = null;
+        this.usersList = [];
+        this.challenges = [];
+        this.challengePollInterval = null;
 
         this.spotifyConnected = false;
         this.currentSong = "No song playing";
@@ -53,6 +60,7 @@ class SudokuGame {
 
     init() {
         this.setupEventListeners();
+        this.setupAuthAndInboxListeners();
         this.generatePuzzle();
         this.updateTimer();
         this.animateWaves();
@@ -71,9 +79,7 @@ class SudokuGame {
             }
         }
 
-        if (this.isMultiplayer) {
-            this.initWebSocket();
-        }
+        this.restoreSession();
         // Initialize song display
         this.updateSongDisplay();
     }
@@ -99,7 +105,375 @@ class SudokuGame {
             });
         }
 
+        // Leave Game button logic
+        const leaveGameBtn = document.getElementById('leave-game-btn');
+        if (leaveGameBtn) {
+            leaveGameBtn.addEventListener('click', () => {
+                if (this.isMultiplayer) {
+                    // Notify server and other player if possible
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                        this.ws.send(JSON.stringify({ type: 'leave-game' }));
+                    }
+                    this.changeMode('single');
+                    this.showNotification('You left the multiplayer game.');
+                }
+            });
+        }
         this.setupDropdownListeners();
+    }
+
+    setupAuthAndInboxListeners() {
+        const loginBtn = document.getElementById('auth-login');
+        const registerBtn = document.getElementById('auth-register');
+        const logoutBtn = document.getElementById('auth-logout');
+        const inboxToggle = document.getElementById('inbox-toggle');
+        const inboxClose = document.getElementById('inbox-close');
+        const sendChallengeBtn = document.getElementById('send-challenge-btn');
+
+        if (loginBtn) {
+            loginBtn.addEventListener('click', () => this.login());
+        }
+        if (registerBtn) {
+            registerBtn.addEventListener('click', () => this.register());
+        }
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => this.logout());
+        }
+        if (inboxToggle) {
+            inboxToggle.addEventListener('click', () => this.toggleInbox());
+        }
+        if (inboxClose) {
+            inboxClose.addEventListener('click', () => this.toggleInbox(false));
+        }
+        if (sendChallengeBtn) {
+            sendChallengeBtn.addEventListener('click', () => this.sendChallenge());
+        }
+    }
+
+    setAuthStatus(message) {
+        const authStatus = document.getElementById('auth-status');
+        if (authStatus) {
+            authStatus.textContent = message;
+        }
+    }
+
+    clearAuthInputs() {
+        const usernameInput = document.getElementById('auth-username');
+        const emailInput = document.getElementById('auth-email');
+        const passwordInput = document.getElementById('auth-password');
+
+        if (usernameInput) usernameInput.value = '';
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+    }
+
+    updateAuthUi() {
+        const loggedIn = !!this.authUser;
+        const loginBtn = document.getElementById('auth-login');
+        const registerBtn = document.getElementById('auth-register');
+        const logoutBtn = document.getElementById('auth-logout');
+        const inboxToggle = document.getElementById('inbox-toggle');
+        const authEmail = document.getElementById('auth-email');
+
+        if (loginBtn) loginBtn.classList.toggle('hidden', loggedIn);
+        if (registerBtn) registerBtn.classList.toggle('hidden', loggedIn);
+        if (logoutBtn) logoutBtn.classList.toggle('hidden', !loggedIn);
+        if (inboxToggle) inboxToggle.classList.toggle('hidden', !loggedIn);
+        if (authEmail) authEmail.classList.toggle('hidden', loggedIn);
+
+        if (loggedIn) {
+            this.setAuthStatus(`Logged in as ${this.authUser.username} (${this.authUser.email})`);
+            const passwordInput = document.getElementById('auth-password');
+            if (passwordInput) passwordInput.value = '';
+        } else {
+            this.clearAuthInputs();
+            this.setAuthStatus('Not logged in');
+            const inboxPanel = document.getElementById('inbox-panel');
+            if (inboxPanel) inboxPanel.classList.add('hidden');
+        }
+    }
+
+    restoreSession() {
+        const raw = sessionStorage.getItem('websudoku_user');
+        if (!raw) {
+            localStorage.removeItem('websudoku_user');
+            this.updateAuthUi();
+            return;
+        }
+
+        try {
+            this.authUser = JSON.parse(raw);
+            this.updateAuthUi();
+            this.initWebSocket();
+            this.refreshUsersAndChallenges();
+            this.challengePollInterval = setInterval(() => this.refreshUsersAndChallenges(), 4000);
+        } catch {
+            sessionStorage.removeItem('websudoku_user');
+            localStorage.removeItem('websudoku_user');
+            this.authUser = null;
+            this.updateAuthUi();
+        }
+    }
+
+    async apiFetch(url, options = {}) {
+        const response = await fetch(url, {
+            method: options.method || 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: options.body ? JSON.stringify(options.body) : undefined
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || 'Request failed');
+        }
+        return data;
+    }
+
+    async register() {
+        const username = document.getElementById('auth-username')?.value?.trim();
+        const email = document.getElementById('auth-email')?.value?.trim();
+        const password = document.getElementById('auth-password')?.value || '';
+
+        if (!username || !email || !password) {
+            this.showNotification('Username, email and password are required to register.');
+            return;
+        }
+
+        try {
+            const result = await this.apiFetch('/api/auth/register', {
+                method: 'POST',
+                body: { username, email, password }
+            });
+            this.authUser = result.user;
+            sessionStorage.setItem('websudoku_user', JSON.stringify(this.authUser));
+            localStorage.removeItem('websudoku_user');
+            this.clearAuthInputs();
+            this.updateAuthUi();
+            this.initWebSocket();
+            this.refreshUsersAndChallenges();
+            if (this.challengePollInterval) clearInterval(this.challengePollInterval);
+            this.challengePollInterval = setInterval(() => this.refreshUsersAndChallenges(), 4000);
+            this.showNotification('Account created and logged in.');
+        } catch (error) {
+            this.showNotification(error.message);
+        }
+    }
+
+    async login() {
+        const username = document.getElementById('auth-username')?.value?.trim();
+        const password = document.getElementById('auth-password')?.value || '';
+
+        if (!username || !password) {
+            this.showNotification('Username and password are required to log in.');
+            return;
+        }
+
+        try {
+            const result = await this.apiFetch('/api/auth/login', {
+                method: 'POST',
+                body: { username, password }
+            });
+            this.authUser = result.user;
+            sessionStorage.setItem('websudoku_user', JSON.stringify(this.authUser));
+            localStorage.removeItem('websudoku_user');
+            this.clearAuthInputs();
+            this.updateAuthUi();
+            this.initWebSocket();
+            this.refreshUsersAndChallenges();
+            if (this.challengePollInterval) clearInterval(this.challengePollInterval);
+            this.challengePollInterval = setInterval(() => this.refreshUsersAndChallenges(), 4000);
+            this.showNotification('Logged in successfully.');
+        } catch (error) {
+            this.showNotification(error.message);
+        }
+    }
+
+    logout() {
+        this.authUser = null;
+        this.usersList = [];
+        this.challenges = [];
+        this.currentRoomId = null;
+        if (this.challengePollInterval) {
+            clearInterval(this.challengePollInterval);
+            this.challengePollInterval = null;
+        }
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+        sessionStorage.removeItem('websudoku_user');
+        localStorage.removeItem('websudoku_user');
+        this.clearAuthInputs();
+        this.updateAuthUi();
+        this.renderChallengeUsers();
+        this.renderIncomingChallenges();
+        this.showNotification('Logged out.');
+    }
+
+    toggleInbox(force) {
+        const panel = document.getElementById('inbox-panel');
+        if (!panel) return;
+        if (typeof force === 'boolean') {
+            panel.classList.toggle('hidden', !force);
+            return;
+        }
+        panel.classList.toggle('hidden');
+    }
+
+    async refreshUsersAndChallenges() {
+        if (!this.authUser) return;
+        try {
+            const username = encodeURIComponent(this.authUser.username);
+            const [usersResult, challengesResult] = await Promise.all([
+                this.apiFetch(`/api/users?username=${username}`),
+                this.apiFetch(`/api/challenges?username=${username}`)
+            ]);
+            this.usersList = usersResult.users || [];
+            this.challenges = challengesResult.challenges || [];
+            this.renderChallengeUsers();
+            this.renderIncomingChallenges();
+        } catch (error) {
+            this.setAuthStatus(error.message);
+        }
+    }
+
+    renderChallengeUsers() {
+        const targetSelect = document.getElementById('challenge-target');
+        if (!targetSelect) return;
+
+        // Preserve the current selection
+        const prevValue = targetSelect.value;
+
+        targetSelect.innerHTML = '';
+        if (!this.usersList.length) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No users available';
+            targetSelect.appendChild(option);
+            return;
+        }
+
+        this.usersList.forEach((user) => {
+            const option = document.createElement('option');
+            option.value = user.username;
+            option.textContent = `${user.username} (${user.email})`;
+            if (user.username === prevValue) {
+                option.selected = true;
+            }
+            targetSelect.appendChild(option);
+        });
+    }
+
+    renderIncomingChallenges() {
+        const wrapper = document.getElementById('incoming-challenges');
+        if (!wrapper) return;
+
+        const incoming = this.challenges.filter((challenge) =>
+            challenge.toUser === this.authUser?.username && challenge.status === 'pending'
+        );
+
+        wrapper.innerHTML = '';
+        if (!incoming.length) {
+            wrapper.textContent = 'No pending challenges.';
+            return;
+        }
+
+        incoming.forEach((challenge) => {
+            const card = document.createElement('div');
+            card.className = 'challenge-card';
+            card.innerHTML = `
+                <div><strong>${challenge.fromUser}</strong> challenged you</div>
+                <div>Difficulty: ${challenge.difficulty}</div>
+            `;
+
+            const actions = document.createElement('div');
+            actions.className = 'challenge-actions';
+
+            const acceptBtn = document.createElement('button');
+            acceptBtn.textContent = 'Accept';
+            acceptBtn.addEventListener('click', () => this.respondToChallenge(challenge.id, true));
+
+            const rejectBtn = document.createElement('button');
+            rejectBtn.textContent = 'Reject';
+            rejectBtn.addEventListener('click', () => this.respondToChallenge(challenge.id, false));
+
+            actions.appendChild(acceptBtn);
+            actions.appendChild(rejectBtn);
+            card.appendChild(actions);
+            wrapper.appendChild(card);
+        });
+    }
+
+    async sendChallenge() {
+        if (!this.authUser) {
+            this.showNotification('Log in first to send challenges.');
+            return;
+        }
+
+        const target = document.getElementById('challenge-target')?.value;
+        const difficulty = document.getElementById('challenge-difficulty')?.value || 'Easy';
+        if (!target) {
+            this.showNotification('Choose a user to challenge.');
+            return;
+        }
+
+        try {
+            await this.apiFetch('/api/challenges/send', {
+                method: 'POST',
+                body: {
+                    fromUser: this.authUser.username,
+                    toUser: target,
+                    difficulty
+                }
+            });
+            this.showNotification(`Challenge sent to ${target} (${difficulty}).`);
+            this.refreshUsersAndChallenges();
+        } catch (error) {
+            this.showNotification(error.message);
+        }
+    }
+
+    async respondToChallenge(challengeId, accept) {
+        if (!this.authUser) return;
+        try {
+            await this.apiFetch('/api/challenges/respond', {
+                method: 'POST',
+                body: {
+                    challengeId,
+                    username: this.authUser.username,
+                    accept
+                }
+            });
+            this.refreshUsersAndChallenges();
+            this.showNotification(accept ? 'Challenge accepted.' : 'Challenge rejected.');
+        } catch (error) {
+            this.showNotification(error.message);
+        }
+    }
+
+    startChallengeGame(roomId, difficulty, opponent) {
+        const modeSelect = document.getElementById('mode-select');
+        if (modeSelect) modeSelect.value = 'multiplayer';
+
+        this.gameMode = 'multiplayer';
+        this.isMultiplayer = true;
+        this.currentRoomId = roomId;
+        this.difficulty = difficulty || 'Easy';
+
+        const diffSelect = document.getElementById('difficulty-select');
+        if (diffSelect) {
+            diffSelect.value = this.difficulty;
+            diffSelect.disabled = true;
+        }
+
+        this.newGame();
+        this.showNotification(`Challenge accepted with ${opponent}. Joining ${this.difficulty} game...`);
+
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'joinRoom', roomId }));
+        }
     }
 
     setupChatListeners() {
@@ -242,8 +616,7 @@ class SudokuGame {
                 box.style.opacity = 0.7;
             }, 5000);
         }
-        // Also send notification to chat as a system message
-        this.addChatMessage('System', message, 'system');
+        // Do NOT send notification to chat. Only explicit chat messages go to chat.
     }
 
     showWinOverlay(title, message, timeText = '') {
@@ -278,19 +651,46 @@ class SudokuGame {
     }
 
     initWebSocket() {
+        if (!this.authUser) return;
+        if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
         const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-        this.ws = new WebSocket(`${protocol}://${location.host}`);
+        const username = encodeURIComponent(this.authUser.username);
+        this.ws = new WebSocket(`${protocol}://${location.host}?username=${username}`);
         this.ws.onopen = () => {
-            // Send selected difficulty to server
-            const diffSelect = document.getElementById('difficulty-select');
-            const difficulty = diffSelect ? diffSelect.value : "Easy";
-            this.ws.send(JSON.stringify({
-                type: 'join',
-                difficulty: difficulty
-            }));
+            this.wsConnected = true;
+            if (this.currentRoomId) {
+                this.ws.send(JSON.stringify({ type: 'joinRoom', roomId: this.currentRoomId }));
+            }
         };
+
         this.ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
+            if (data.type === 'challenge-updated') {
+                this.refreshUsersAndChallenges();
+                return;
+            }
+            if (data.type === 'challenge-rejected') {
+                this.refreshUsersAndChallenges();
+                this.showNotification(`${data.by} rejected your challenge.`);
+                return;
+            }
+            if (data.type === 'challenge-accepted') {
+                this.refreshUsersAndChallenges();
+                this.startChallengeGame(data.roomId, data.difficulty, data.opponent);
+                return;
+            }
+            if (data.type === 'auth-required') {
+                this.showNotification(data.message || 'Please log in.');
+                return;
+            }
+            if (data.type === 'error') {
+                this.showNotification(data.message || 'Server error.');
+                return;
+            }
+
             if (data.type === 'init') {
                 this.grid = data.grid;
                 this.solution = data.solution;
@@ -382,8 +782,8 @@ class SudokuGame {
                 if (data.message === 'Other player disconnected.') {
                     this.setBoardEnabled(false);
                     this.timerRunning = false;
-                    this.showWinOverlay('Game ended', 'The other player disconnected. No winner.');
-                    this.showNotification('Game ended: the other player disconnected.');
+                    this.showWinOverlay('You win!', 'Other player disconnected.');
+                    this.showNotification('You win! The other player disconnected.');
                 } else {
                     this.endMultiplayerGame();
                 }
@@ -392,6 +792,13 @@ class SudokuGame {
                 const senderName = `Player ${data.player}`;
                 const messageType = data.player === this.playerNum ? 'own' : 'other';
                 this.addChatMessage(senderName, data.message, messageType);
+            }
+        };
+
+        this.ws.onclose = () => {
+            this.wsConnected = false;
+            if (this.authUser) {
+                setTimeout(() => this.initWebSocket(), 1200);
             }
         };
     }
@@ -698,13 +1105,25 @@ class SudokuGame {
         cell.blur(); // Remove focus to prevent focus ring stains
     });
 
+        if (mode === 'multiplayer' && !this.authUser) {
+            this.showNotification('Log in first to play multiplayer.');
+            const modeSelect = document.getElementById('mode-select');
+            if (modeSelect) modeSelect.value = 'single';
+            mode = 'single';
+        }
+
         this.gameMode = mode;
         this.isMultiplayer = (mode === "multiplayer");
-        if(!this.isMultiplayer) {
+        // Show/hide Leave Game button
+        const leaveGameBtn = document.getElementById('leave-game-btn');
+        if (leaveGameBtn) {
+            leaveGameBtn.style.display = this.isMultiplayer ? '' : 'none';
+        }
+        if (!this.isMultiplayer) {
             this.maxMistakes = 10000000;
+            this.currentRoomId = null;
         }
         const diffSelect = document.getElementById('difficulty-select');
-
         if (diffSelect) {
             diffSelect.disabled = this.isMultiplayer;
         }
@@ -720,8 +1139,17 @@ class SudokuGame {
         this.player2Time = 0;
         this.timerRunning = false;
         this._lastTimerUpdate = Date.now();
+
         if (this.isMultiplayer) {
             this.initWebSocket();
+            // Wild card: join or create a waiting room
+            this.showNotification('Waiting for another player to join...');
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({ type: 'wildcard-join', difficulty: this.difficulty }));
+            } else {
+                // Wait for websocket to open
+                this.wsWaitingForWildcard = true;
+            }
         }
         this.newGame();
 
@@ -748,10 +1176,6 @@ class SudokuGame {
             this.player1Mistakes = 0;
             this.player2Mistakes = 0;
             this.currentPlayer = 1;
-            if (this.ws) {
-                this.ws.close();
-                this.ws = null;
-            }
         }
     }
     changeDifficulty(difficulty) {
