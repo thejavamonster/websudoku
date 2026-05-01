@@ -8,51 +8,11 @@
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="image.png" type="image/png">
     <link rel="manifest" href="manifest.json">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2954305345000763"
-     crossorigin="anonymous"></script>
 
 
 </head>
 <body>
-    <div class="auth-panel" id="auth-panel">
-        <div class="auth-title">Websudoku Account</div>
-        <input type="text" id="auth-username" placeholder="Username" autocomplete="off" autocapitalize="none" spellcheck="false">
-        <input type="email" id="auth-email" placeholder="Email (for register)" autocomplete="off" autocapitalize="none" spellcheck="false">
-        <input type="password" id="auth-password" placeholder="Password" autocomplete="off">
-        <div class="auth-actions">
-            <button id="auth-login">Log in</button>
-            <button id="auth-register">Register</button>
-            <button id="auth-logout" class="hidden">Log out</button>
-        </div>
-        <div id="auth-status" class="auth-status">Not logged in</div>
-    </div>
-
-    <button class="inbox-fab hidden" id="inbox-toggle">Inbox</button>
-
-    <div class="inbox-panel hidden" id="inbox-panel">
-        <div class="inbox-header">
-            <h3>Challenges</h3>
-            <button id="inbox-close">×</button>
-        </div>
-        <div class="inbox-section">
-            <div class="inbox-section-title">Incoming</div>
-            <div id="incoming-challenges" class="inbox-list"></div>
-        </div>
-        <div class="inbox-section">
-            <div class="inbox-section-title">Send challenge</div>
-            <div class="challenge-compose">
-                <select id="challenge-target" class="control-select"></select>
-                <select id="challenge-difficulty" class="control-select">
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                    <option value="Stupidly Hard">Stupidly Hard</option>
-                    <option value="Impossibly Hard">Impossibly Hard</option>
-                </select>
-                <button id="send-challenge-btn">Send challenge</button>
-            </div>
-        </div>
-    </div>
+    
 
     <div class="app-container">
         <div class="container">
@@ -198,7 +158,6 @@
                     <option value="single">Single Player</option>
                     <option value="multiplayer">Multiplayer</option>
                 </select>
-                <button id="leave-game-btn" class="control-btn" style="display:none; margin-left:12px;">Leave Game</button>
             </div>
             
             <div class="diff-frame">
@@ -237,7 +196,7 @@
         
         <div class="chat-sidebar hidden" id="chat-sidebar">
             <div class="chat-header">
-                <h3>Enkryptonite - Developed by Nixon Incorporated</h3>
+                <h3>Enkryptonite - Developed by SafeComms Incorporated</h3>
                 <button class="chat-toggle" id="chat-toggle">×</button>
             </div>
             <div class="chat-messages" id="chat-messages"></div>

@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const querystring = require('querystring');
-const crypto = require('crypto');
 const WebSocket = require('ws');
 
 const PORT = process.env.PORT || 8080;
@@ -12,107 +11,8 @@ const PORT = process.env.PORT || 8080;
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || `http://localhost:${PORT}`;
-const DATA_DIR = path.join(__dirname, 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const ALLOWED_DIFFICULTIES = new Set(['Easy', 'Medium', 'Hard', 'Stupidly Hard', 'Impossibly Hard']);
 
 const sessions = new Map();
-const onlineUsers = new Map();
-
-function ensureDataDir() {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-}
-
-function readUserStore() {
-    ensureDataDir();
-    if (!fs.existsSync(USERS_FILE)) {
-        return { users: {}, challenges: [], nextChallengeId: 1 };
-    }
-
-    try {
-        const raw = fs.readFileSync(USERS_FILE, 'utf8');
-        const parsed = JSON.parse(raw);
-        return {
-            users: parsed.users || {},
-            challenges: parsed.challenges || [],
-            nextChallengeId: parsed.nextChallengeId || 1
-        };
-    } catch (error) {
-        console.error('Failed to read users store. Starting with empty store.', error.message);
-        return { users: {}, challenges: [], nextChallengeId: 1 };
-    }
-}
-
-const userStore = readUserStore();
-
-function saveUserStore() {
-    ensureDataDir();
-    fs.writeFileSync(USERS_FILE, JSON.stringify(userStore, null, 2), 'utf8');
-}
-
-function normalizeUsername(username = '') {
-    return String(username).trim().toLowerCase();
-}
-
-function normalizeEmail(email = '') {
-    return String(email).trim().toLowerCase();
-}
-
-function hashPassword(password = '') {
-    return crypto.createHash('sha256').update(String(password)).digest('hex');
-}
-
-function sanitizePublicUser(user) {
-    return {
-        username: user.username,
-        email: user.email,
-        createdAt: user.createdAt
-    };
-}
-
-function parseJsonBody(req) {
-    return new Promise((resolve, reject) => {
-        let body = '';
-        req.on('data', (chunk) => {
-            body += chunk;
-            if (body.length > 1e6) {
-                reject(new Error('Request body too large'));
-                req.destroy();
-            }
-        });
-        req.on('end', () => {
-            if (!body) {
-                resolve({});
-                return;
-            }
-            try {
-                resolve(JSON.parse(body));
-            } catch (error) {
-                reject(new Error('Invalid JSON body'));
-            }
-        });
-        req.on('error', reject);
-    });
-}
-
-function sendJson(res, statusCode, payload) {
-    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(payload));
-}
-
-function notifyUser(username, payload) {
-    const key = normalizeUsername(username);
-    const sockets = onlineUsers.get(key);
-    if (!sockets || sockets.size === 0) return;
-
-    for (const socket of sockets) {
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify(payload));
-        }
-    }
-}
 
 function generateSessionId() {
     return Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -487,216 +387,6 @@ const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const pathname = url.pathname;
 
-    if (pathname === '/api/auth/register' && req.method === 'POST') {
-        parseJsonBody(req)
-            .then((body) => {
-                const username = normalizeUsername(body.username);
-                const email = normalizeEmail(body.email);
-                const password = String(body.password || '');
-
-                if (!username || !email || !password) {
-                    sendJson(res, 400, { error: 'Username, email, and password are required.' });
-                    return;
-                }
-
-                if (password.length < 4) {
-                    sendJson(res, 400, { error: 'Password must be at least 4 characters.' });
-                    return;
-                }
-
-                if (userStore.users[username]) {
-                    sendJson(res, 409, { error: 'Username already exists.' });
-                    return;
-                }
-
-                const emailInUse = Object.values(userStore.users).some((user) => user.email === email);
-                if (emailInUse) {
-                    sendJson(res, 409, { error: 'Email already in use.' });
-                    return;
-                }
-
-                userStore.users[username] = {
-                    username,
-                    email,
-                    passwordHash: hashPassword(password),
-                    createdAt: new Date().toISOString()
-                };
-                saveUserStore();
-
-                sendJson(res, 201, {
-                    success: true,
-                    user: sanitizePublicUser(userStore.users[username])
-                });
-            })
-            .catch((error) => sendJson(res, 400, { error: error.message || 'Bad request' }));
-        return;
-    }
-
-    if (pathname === '/api/auth/login' && req.method === 'POST') {
-        parseJsonBody(req)
-            .then((body) => {
-                const username = normalizeUsername(body.username);
-                const password = String(body.password || '');
-                const user = userStore.users[username];
-
-                if (!user || user.passwordHash !== hashPassword(password)) {
-                    sendJson(res, 401, { error: 'Invalid username or password.' });
-                    return;
-                }
-
-                sendJson(res, 200, { success: true, user: sanitizePublicUser(user) });
-            })
-            .catch((error) => sendJson(res, 400, { error: error.message || 'Bad request' }));
-        return;
-    }
-
-    if (pathname === '/api/users' && req.method === 'GET') {
-        const current = normalizeUsername(url.searchParams.get('username') || '');
-        if (!current || !userStore.users[current]) {
-            sendJson(res, 401, { error: 'Please log in first.' });
-            return;
-        }
-
-        const users = Object.values(userStore.users)
-            .filter((user) => user.username !== current)
-            .map((user) => ({ username: user.username, email: user.email }));
-
-        sendJson(res, 200, { users });
-        return;
-    }
-
-    if (pathname === '/api/challenges' && req.method === 'GET') {
-        const current = normalizeUsername(url.searchParams.get('username') || '');
-        if (!current || !userStore.users[current]) {
-            sendJson(res, 401, { error: 'Please log in first.' });
-            return;
-        }
-
-        const challenges = userStore.challenges
-            .filter((challenge) => challenge.toUser === current || challenge.fromUser === current)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-        sendJson(res, 200, { challenges });
-        return;
-    }
-
-    if (pathname === '/api/challenges/send' && req.method === 'POST') {
-        parseJsonBody(req)
-            .then((body) => {
-                const fromUser = normalizeUsername(body.fromUser);
-                const toUser = normalizeUsername(body.toUser);
-                const difficulty = ALLOWED_DIFFICULTIES.has(body.difficulty) ? body.difficulty : 'Easy';
-
-                if (!fromUser || !toUser) {
-                    sendJson(res, 400, { error: 'Both users are required.' });
-                    return;
-                }
-
-                if (fromUser === toUser) {
-                    sendJson(res, 400, { error: 'You cannot challenge yourself.' });
-                    return;
-                }
-
-                if (!userStore.users[fromUser] || !userStore.users[toUser]) {
-                    sendJson(res, 404, { error: 'User not found.' });
-                    return;
-                }
-
-                const now = new Date().toISOString();
-                const challenge = {
-                    id: userStore.nextChallengeId++,
-                    fromUser,
-                    toUser,
-                    difficulty,
-                    status: 'pending',
-                    createdAt: now,
-                    updatedAt: now,
-                    roomId: null
-                };
-
-                userStore.challenges.push(challenge);
-                saveUserStore();
-
-                notifyUser(toUser, { type: 'challenge-updated', challenge });
-                notifyUser(fromUser, { type: 'challenge-updated', challenge });
-
-                sendJson(res, 201, { success: true, challenge });
-            })
-            .catch((error) => sendJson(res, 400, { error: error.message || 'Bad request' }));
-        return;
-    }
-
-    if (pathname === '/api/challenges/respond' && req.method === 'POST') {
-        parseJsonBody(req)
-            .then((body) => {
-                const username = normalizeUsername(body.username);
-                const challengeId = Number(body.challengeId);
-                const accept = !!body.accept;
-
-                const challenge = userStore.challenges.find((item) => item.id === challengeId);
-                if (!challenge) {
-                    sendJson(res, 404, { error: 'Challenge not found.' });
-                    return;
-                }
-
-                if (challenge.toUser !== username) {
-                    sendJson(res, 403, { error: 'You can only respond to your own challenges.' });
-                    return;
-                }
-
-                if (challenge.status !== 'pending') {
-                    sendJson(res, 400, { error: 'Challenge was already handled.' });
-                    return;
-                }
-
-                challenge.status = accept ? 'accepted' : 'rejected';
-                challenge.updatedAt = new Date().toISOString();
-
-                if (accept) {
-                    const roomId = nextRoomId++;
-                    rooms[roomId] = {
-                        id: roomId,
-                        players: [],
-                        participants: [challenge.fromUser, challenge.toUser],
-                        game: null,
-                        difficulty: challenge.difficulty
-                    };
-                    startNewGameForRoom(roomId, challenge.difficulty);
-                    challenge.roomId = roomId;
-
-                    notifyUser(challenge.fromUser, {
-                        type: 'challenge-accepted',
-                        roomId,
-                        difficulty: challenge.difficulty,
-                        opponent: challenge.toUser,
-                        challengeId: challenge.id
-                    });
-
-                    notifyUser(challenge.toUser, {
-                        type: 'challenge-accepted',
-                        roomId,
-                        difficulty: challenge.difficulty,
-                        opponent: challenge.fromUser,
-                        challengeId: challenge.id
-                    });
-                } else {
-                    notifyUser(challenge.fromUser, {
-                        type: 'challenge-rejected',
-                        challengeId: challenge.id,
-                        by: challenge.toUser
-                    });
-                }
-
-                notifyUser(challenge.fromUser, { type: 'challenge-updated', challenge });
-                notifyUser(challenge.toUser, { type: 'challenge-updated', challenge });
-                saveUserStore();
-
-                sendJson(res, 200, { success: true, challenge });
-            })
-            .catch((error) => sendJson(res, 400, { error: error.message || 'Bad request' }));
-        return;
-    }
-
     if (pathname === '/spotify-auth') {
         const sessionId = generateSessionId();
         const authUrl = getSpotifyAuthUrl(sessionId);
@@ -867,269 +557,161 @@ function startNewGameForRoom(roomId, difficulty) {
 
 const wss = new WebSocket.Server({ server });
 
-function getPlayerNumber(room, username) {
-    const index = room.participants.indexOf(username);
-    return index >= 0 ? index + 1 : null;
-}
-
-function broadcastToRoom(room, payload) {
-    room.players.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(payload));
-        }
-    });
-}
-
-function maybeStartRoom(room) {
-    const socketsByUser = new Map();
-    for (const client of room.players) {
-        if (client.readyState === WebSocket.OPEN && client.username) {
-            socketsByUser.set(client.username, client);
+wss.on('connection', (ws) => {
+    // Find a room with 0 or 1 player, or create a new one
+    let roomId = null;
+    for (const id in rooms) {
+        if (rooms[id].players.length < 2) {
+            roomId = id;
+            break;
         }
     }
+    if (!roomId) {
+        roomId = nextRoomId++;
+        rooms[roomId] = { players: [], game: null };
+    }
 
-    const hasBothPlayers = room.participants.every((username) => socketsByUser.has(username));
-    if (!hasBothPlayers) {
-        room.participants.forEach((username) => {
-            const client = socketsByUser.get(username);
-            if (client && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({ type: 'waiting', message: 'Waiting for the other challenged player...' }));
-            }
+    const playerNum = rooms[roomId].players.length + 1;
+    rooms[roomId].players.push(ws);
+
+    ws.roomId = roomId;
+    ws.playerNum = playerNum;
+
+    if (rooms[roomId].players.length === 2) {
+        const diff = rooms[roomId].players[0].selectedDifficulty || "Easy";
+        startNewGameForRoom(roomId, diff);
+        rooms[roomId].players.forEach((client, idx) => {
+            client.send(JSON.stringify({
+                type: 'init',
+                grid: rooms[roomId].game.grid,
+                solution: rooms[roomId].game.solution,
+                mistakes: rooms[roomId].game.mistakes,
+                currentPlayer: rooms[roomId].game.currentPlayer,
+                playerNum: idx + 1,
+                notify: true,
+                difficulty: diff // <-- Add this line
+            }));
         });
-        return;
-    }
 
-    room.participants.forEach((username, index) => {
-        const client = socketsByUser.get(username);
-        // Send both player usernames for chat display
-        const player1 = room.participants[0];
-        const player2 = room.participants[1];
-        client.send(JSON.stringify({
-            type: 'init',
-            grid: room.game.grid,
-            solution: room.game.solution,
-            mistakes: room.game.mistakes,
-            currentPlayer: room.game.currentPlayer,
-            playerNum: index + 1,
-            notify: true,
-            difficulty: room.difficulty,
-            player1Name: player1,
-            player2Name: player2
-        }));
-    });
-}
-
-wss.on('connection', (ws, req) => {
-        // Wildcard multiplayer queue
-        if (!global.wildcardQueue) global.wildcardQueue = [];
-    const reqUrl = new URL(req.url, `http://localhost:${PORT}`);
-    const username = normalizeUsername(reqUrl.searchParams.get('username') || '');
-    ws.username = username;
-    ws.roomId = null;
-
-    if (username && userStore.users[username]) {
-        if (!onlineUsers.has(username)) {
-            onlineUsers.set(username, new Set());
-        }
-        onlineUsers.get(username).add(ws);
+    } else {
+        ws.send(JSON.stringify({ type: 'waiting', message: 'Waiting for another player...' }));
     }
 
     ws.on('message', (message) => {
         let data;
-        try {
-            data = JSON.parse(message);
-        } catch {
+        try { data = JSON.parse(message); } catch { return; }
+        
+        const room = rooms[ws.roomId];
+        if (!room) return;
+        
+        if (data.type === 'join') {
+            ws.selectedDifficulty = data.difficulty || "Easy";
             return;
         }
-
-        if (!ws.username || !userStore.users[ws.username]) {
-            ws.send(JSON.stringify({ type: 'auth-required', message: 'Please log in to use multiplayer and challenges.' }));
-            return;
-        }
-
-        // Handle leave-game from client
-        if (data.type === 'leave-game') {
-            const room = rooms[ws.roomId];
-            if (room && room.game) {
-                // Remove this player from the room
-                room.players = room.players.filter((client) => client !== ws);
-                // Notify the other player if still connected
-                if (room.players.length === 1) {
-                    const remainingClient = room.players[0];
-                    if (remainingClient.readyState === WebSocket.OPEN) {
-                        remainingClient.send(JSON.stringify({
-                            type: 'gameover',
-                            message: 'Other player disconnected.'
-                        }));
-                        room.game = null;
-                    } else {
-                        // Store pending win for this username
-                        room.pendingWinFor = remainingClient.username;
-                        room.game = null;
-                    }
-                }
-                if (room.players.length === 0) {
-                    delete rooms[ws.roomId];
-                }
-            }
-            ws.roomId = null;
-            return;
-        }
-
-        // Wildcard multiplayer logic
-        if (data.type === 'wildcard-join') {
-            // Remove from queue if already present
-            global.wildcardQueue = global.wildcardQueue.filter(u => u.username !== ws.username);
-            // Add to queue
-            global.wildcardQueue.push({ username: ws.username, ws, difficulty: data.difficulty });
-            // If two or more in queue, match the first two
-            if (global.wildcardQueue.length >= 2) {
-                const [p1, p2] = global.wildcardQueue.splice(0, 2);
-                const roomId = nextRoomId++;
-                rooms[roomId] = {
-                    id: roomId,
-                    players: [p1.ws, p2.ws],
-                    participants: [p1.username, p2.username],
-                    game: null,
-                    difficulty: p1.difficulty || 'Easy'
-                };
-                startNewGameForRoom(roomId, p1.difficulty || 'Easy');
-                // Assign roomId to sockets
-                p1.ws.roomId = roomId;
-                p2.ws.roomId = roomId;
-                // Notify both clients to start
-                maybeStartRoom(rooms[roomId]);
-            } else {
-                ws.send(JSON.stringify({ type: 'waiting', message: 'Waiting for another player to join wild card...' }));
-            }
-            return;
-        }
-
-        if (data.type === 'joinRoom') {
-            const roomId = Number(data.roomId);
-            const room = rooms[roomId];
-
-            if (!room) {
-                ws.send(JSON.stringify({ type: 'error', message: 'Game room not found.' }));
-                return;
-            }
-
-            if (!room.participants.includes(ws.username)) {
-                ws.send(JSON.stringify({ type: 'error', message: 'You are not part of this challenge room.' }));
-                return;
-            }
-
-            ws.roomId = roomId;
-            if (!room.players.includes(ws)) {
-                room.players.push(ws);
-            }
-            // Check for pending win
-            if (room.pendingWinFor && room.pendingWinFor === ws.username) {
-                ws.send(JSON.stringify({
-                    type: 'gameover',
-                    message: 'Other player disconnected.'
-                }));
-                delete room.pendingWinFor;
-                room.game = null;
-                return;
-            }
-            maybeStartRoom(room);
-            return;
-        }
-
+        
         if (data.type === 'chat') {
-            const room = rooms[ws.roomId];
-            if (!room) return;
-            broadcastToRoom(room, {
-                type: 'chat',
-                message: data.message,
-                player: getPlayerNumber(room, ws.username)
+            // Broadcast chat message to all players in the room
+            room.players.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: 'chat',
+                        message: data.message,
+                        player: data.player
+                    }));
+                }
             });
             return;
         }
-
-        const room = rooms[ws.roomId];
-        if (!room || !room.game) return;
-
-        const currentPlayerNumber = getPlayerNumber(room, ws.username);
-        if (room.game.currentPlayer !== currentPlayerNumber) return;
+        
+        // Game-related messages require an active game
+        if (!room.game) return;
 
         if (data.type === 'move') {
-            const { row, col, value } = data.move;
+            const { row, col, value, player } = data.move;
             room.game.grid[row][col] = value;
-            room.game.moves.push({ row, col, value, player: currentPlayerNumber });
+            room.game.moves.push(data.move);
             room.game.currentPlayer = room.game.currentPlayer === 1 ? 2 : 1;
-
-            broadcastToRoom(room, {
-                type: 'move',
-                move: { row, col, value, player: currentPlayerNumber },
-                currentPlayer: room.game.currentPlayer
+            room.players.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: 'move',
+                        move: data.move,
+                        currentPlayer: room.game.currentPlayer
+                    }));
+                }
             });
 
+            // Check if the board is solved after this move
             const isSolved = room.game.grid.every((rowArr, i) =>
                 rowArr.every((cell, j) => cell === room.game.solution[i][j])
             );
-
             if (isSolved) {
-                broadcastToRoom(room, {
-                    type: 'gameover',
-                    player1Mistakes: room.game.mistakes[0],
-                    player2Mistakes: room.game.mistakes[1]
+                // Send gameover to both players with mistakes info
+                room.players.forEach((client, idx) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({
+                            type: 'gameover',
+                            player1Mistakes: room.game.mistakes[0],
+                            player2Mistakes: room.game.mistakes[1]
+                        }));
+                    }
                 });
                 room.game = null;
             }
-            return;
         }
-
         if (data.type === 'mistake') {
-            const idx = currentPlayerNumber - 1;
+            const idx = data.player - 1;
             room.game.mistakes[idx]++;
             room.game.currentPlayer = room.game.currentPlayer === 1 ? 2 : 1;
-
-            broadcastToRoom(room, {
-                type: 'mistake',
-                mistakes: room.game.mistakes,
-                cell: data.cell,
-                wrongValue: data.wrongValue,
-                currentPlayer: room.game.currentPlayer,
-                player: currentPlayerNumber
+            room.players.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: 'mistake',
+                        mistakes: room.game.mistakes,
+                        cell: data.cell,
+                        wrongValue: data.wrongValue,
+                        currentPlayer: room.game.currentPlayer,
+                        player: data.player
+                    }));
+                }
             });
-
+            // End game if a player reaches 3 mistakes
             if (room.game.mistakes[idx] >= 3) {
-                broadcastToRoom(room, { type: 'gameover', loser: currentPlayerNumber });
-                room.game = null;
+                room.players.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({
+                            type: 'gameover',
+                            loser: data.player
+                        }));
+                    }
+                });
+                room.game = null; // Optionally reset game state
             }
         }
     });
 
     ws.on('close', () => {
-        if (ws.username && onlineUsers.has(ws.username)) {
-            onlineUsers.get(ws.username).delete(ws);
-            if (onlineUsers.get(ws.username).size === 0) {
-                onlineUsers.delete(ws.username);
-            }
-        }
-
         const room = rooms[ws.roomId];
         if (!room) return;
-
-        room.players = room.players.filter((client) => client !== ws);
+        room.players = room.players.filter(client => client !== ws);
         if (room.players.length === 1 && room.game) {
+            // If a game was active, send gameover to the remaining player
             const remainingClient = room.players[0];
-            // If the remaining client is open, send the message immediately
             if (remainingClient.readyState === WebSocket.OPEN) {
                 remainingClient.send(JSON.stringify({
                     type: 'gameover',
                     message: 'Other player disconnected.'
                 }));
-                room.game = null;
-            } else {
-                // Store pending win for this username
-                room.pendingWinFor = remainingClient.username;
-                room.game = null;
+            }
+            room.game = null;
+        } else if (room.players.length === 1) {
+            // No active game, just notify waiting
+            const remainingClient = room.players[0];
+            if (remainingClient.readyState === WebSocket.OPEN) {
+                remainingClient.send(JSON.stringify({ type: 'waiting', message: 'Other player disconnected.' }));
             }
         }
-
+        // Clean up empty rooms
         if (room.players.length === 0) {
             delete rooms[ws.roomId];
         }
